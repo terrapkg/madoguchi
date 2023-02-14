@@ -25,7 +25,7 @@ pub struct Repo {
 
 pub struct Pkg {
 	pub name: String,
-	pub repo: Repo,
+	pub repo: String,
 	pub verl: String,
 	pub arch: String,
 	pub dirs: String,
@@ -33,11 +33,11 @@ pub struct Pkg {
 }
 
 pub struct Build {
-	pub id: i64,
+	pub id: i32,
 	pub epoch: sqlx::types::chrono::NaiveDateTime,
 	pub pname: String,
 	pub pverl: String,
 	pub parch: String,
-	pub repo: Repo,
+	pub repo: String,
 	pub link: String,
 }
