@@ -13,24 +13,22 @@
 // You should have received a copy of the GNU General Public License along with Madoguchi.
 // If not, see <https://www.gnu.org/licenses/>.
 //
+mod api;
 mod db;
 
-use crate::db::Repo;
 use db::Madoguchi;
 use rocket::*;
-use rocket_db_pools::{
-	sqlx::{Acquire, Executor, Row},
-	Connection, Database,
-};
-use sqlx::{Postgres, Transaction};
+use rocket_db_pools::{Connection, Database};
 
 #[get("/test")]
 async fn test(mut db: Connection<Madoguchi>) -> Option<String> {
-	let mut t: Transaction<Postgres> = db.begin().await.ok()?;
-	sqlx::query!("SELECT * FROM repos").fetch_one(&mut *t).await.map(|record| record.name).ok()
+	sqlx::query!("SELECT * FROM repos").fetch_one(&mut *db).await.map(|record| record.name).ok()
 }
 
 #[launch]
 fn rocket() -> _ {
-	rocket::build().attach(Madoguchi::init()).mount("/", routes![test])
+	rocket::build()
+		.attach(Madoguchi::init())
+		.mount("/", routes![test])
+		.mount("/redirect", api::repology::routes())
 }
