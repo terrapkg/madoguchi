@@ -25,10 +25,16 @@ async fn test(mut db: Connection<Madoguchi>) -> Option<String> {
 	sqlx::query!("SELECT * FROM repos").fetch_one(&mut *db).await.map(|record| record.name).ok()
 }
 
+fn chks() {
+	assert!(std::env::var("GITHUB_TOKEN").is_ok(), "GITHUB_TOKEN is not found but required.");
+}
+
 #[launch]
 fn rocket() -> _ {
+	chks();
 	rocket::build()
 		.attach(Madoguchi::init())
 		.mount("/", routes![test])
 		.mount("/redirect", api::repology::routes())
+		.mount("/ci", api::ci::routes())
 }
