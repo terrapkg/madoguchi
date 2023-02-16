@@ -13,8 +13,10 @@
 ///
 use crate::db::{Build, Madoguchi as Mg, Repo};
 use rocket::http::Status;
+use rocket::request::{self, FromRequest};
 use rocket::{get, routes, Route};
 use rocket_db_pools::Connection;
+use sha2::{Digest, Sha512};
 use sqlx::types::chrono;
 
 const POLL: u64 = 30; // poll every n seconds
@@ -23,19 +25,68 @@ pub(crate) fn routes() -> Vec<Route> {
 	routes![add_build]
 }
 
-#[get("/<repo>/add/b/<name>?<v>&<a>&<d>&<l>")]
+lazy_static::lazy_static! {
+	static ref REQ: reqwest::Client = {
+		use reqwest::header::*;
+		let mut headers = HeaderMap::new();
+		headers.append(ACCEPT, "application/vnd.github+json".parse().unwrap());
+		headers.append(AUTHORIZATION, format!("Bearer {}", std::env::var("GITHUB_TOKEN").unwrap()).parse().unwrap());
+		headers.append("X-GitHub-Api-Version", "2022-11-28".parse().unwrap());
+		reqwest::Client::builder().default_headers(headers).build().unwrap()
+	};
+	static ref API_TOKEN: String = std::env::var("API_TOKEN").unwrap_or_default();
+}
+
+struct ApiAuth {
+	token: String,
+}
+#[derive(Debug)]
+enum ApiError {
+	Nil,
+}
+impl std::fmt::Display for ApiError {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "Random API Error")
+	}
+}
+impl std::error::Error for ApiError {}
+#[rocket::async_trait]
+impl<'r> FromRequest<'r> for ApiAuth {
+	type Error = ApiError;
+	async fn from_request(req: &'r rocket::Request<'_>) -> request::Outcome<Self, Self::Error> {
+		for auth in req.headers().get("Authorization") {
+			if let Some(token) = auth.strip_prefix("Bearer ") {
+				return request::Outcome::Success(ApiAuth { token: token.to_string() });
+			}
+		}
+		request::Outcome::Failure((Status::Forbidden, ApiError::Nil))
+	}
+}
+
+fn verify_token(id: &str, token: &str) -> bool {
+	let mut hasher = Sha512::new();
+	let mut key = API_TOKEN.clone();
+	key.push_str(id);
+	hasher.update(key.as_bytes());
+	hasher.finalize()[..] == *token.as_bytes()
+}
+
+#[get("/<repo>/add/b/<name>?<v>&<a>&<d>&<id>")]
 async fn add_build(
-	mut db: Connection<Mg>, repo: String, name: String, v: String, a: String, d: String, l: String,
+	mut db: Connection<Mg>, repo: String, name: String, v: String, a: String, d: String,
+	id: String, auth: ApiAuth,
 ) -> Status {
-	// TODO verify if request is legit
+	if !verify_token(&id, &auth.token) {
+		return Status::Forbidden;
+	}
 	let ep = chrono::Utc::now().naive_utc();
 	let q = sqlx::query_as!(
 		Build,
-		"INSERT INTO builds(pname,pverl,parch,link,repo,epoch) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *",
+		"INSERT INTO builds(pname,pverl,parch,runid,repo,epoch) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *",
 		name,
 		v,
 		a,
-		l,
+		id,
 		repo,
 		ep
 	);
@@ -51,23 +102,12 @@ async fn add_build(
 	Status::Ok
 }
 
-lazy_static::lazy_static! {
-	static ref REQ: reqwest::Client = {
-		use reqwest::header::*;
-		let mut headers = HeaderMap::new();
-		headers.append(ACCEPT, "application/vnd.github+json".parse().unwrap());
-		headers.append(AUTHORIZATION, format!("Bearer {}", std::env::var("GITHUB_TOKEN").unwrap()).parse().unwrap());
-		headers.append("X-GitHub-Api-Version", "2022-11-28".parse().unwrap());
-		reqwest::Client::builder().default_headers(headers).build().unwrap()
-	};
-}
-
 async fn track_build(mut db: Connection<Mg>, build: Build, dirs: String) {
 	let repo = sqlx::query_as!(Repo, "SELECT * FROM repos WHERE name = $1", build.repo);
 	let repo = repo.fetch_one(&mut *db).await.expect("REPO DOESN'T EXIST???");
 	let mut url = repo.gh.replace("github.com", "api.github.com/repos");
 	url.push_str("/actions/runs/");
-	url.push_str(&build.link);
+	url.push_str(&build.runid);
 	loop {
 		let resp = REQ.get(&url).send().await.expect("Failed to send reqs to track build");
 		let obj: serde_json::Value = resp.json().await.expect("Failed to decode json");
@@ -84,7 +124,12 @@ async fn track_build(mut db: Connection<Mg>, build: Build, dirs: String) {
 async fn add_pkg(mut db: Connection<Mg>, build: Build, dirs: String) {
 	let q = sqlx::query!(
 		"INSERT INTO pkgs(name, repo, verl, arch, dirs, build) VALUES ($1,$2,$3,$4,$5,$6)",
-		build.pname, build.repo, build.pverl, build.parch, dirs, build.id
+		build.pname,
+		build.repo,
+		build.pverl,
+		build.parch,
+		dirs,
+		build.id
 	);
 	assert_eq!(q.execute(&mut *db).await.expect("Failed to insert new pkg").rows_affected(), 1);
 }

@@ -11,4 +11,5 @@ reqwest = { version = "0.11.14", features = ["json"] }
 rocket = "0.5.0-rc.2"
 rocket_db_pools = { version = "0.1.0-rc.2", features = ["sqlx_postgres"] }
 serde_json = "1.0.93"
+sha2 = "0.10.6"
 sqlx = { version = "0.5.13", features = [ "runtime-tokio-rustls", "postgres", "chrono", "macros" ] }

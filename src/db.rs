@@ -39,5 +39,5 @@ pub struct Build {
 	pub pverl: String,
 	pub parch: String,
 	pub repo: String,
-	pub link: String,
+	pub runid: String,
 }
