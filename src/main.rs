@@ -37,4 +37,5 @@ fn rocket() -> _ {
 		.mount("/", routes![test])
 		.mount("/redirect", api::repology::routes())
 		.mount("/ci", api::ci::routes())
+		.mount("/manual", api::manual::routes())
 }

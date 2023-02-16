@@ -29,7 +29,7 @@ pub struct Pkg {
 	pub verl: String,
 	pub arch: String,
 	pub dirs: String,
-	pub build: Option<i64>,
+	pub build: Option<i32>,
 }
 
 pub struct Build {
