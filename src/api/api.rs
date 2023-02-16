@@ -12,31 +12,27 @@
 /// If not, see <https://www.gnu.org/licenses/>.
 ///
 use super::auth::{verify_token, ApiAuth};
-use crate::db::Madoguchi as Mg;
+use crate::db::{Madoguchi as Mg, Pkg, Repo};
+use rocket::futures::StreamExt;
 use rocket::http::Status;
 use rocket::{get, routes, Route};
 use rocket_db_pools::Connection;
+use sqlx::query_as as qa;
+
+const MAX_LIM: i64 = 100;
 
 pub(crate) fn routes() -> Vec<Route> {
-	routes![add_pkg, del_pkg, add_repo, del_repo]
+	routes![add_pkg, del_pkg, add_repo, del_repo, list_pkgs, list_repos]
 }
 
-#[get("/<repo>/add/p/<name>?<verl>&<arch>&<dirs>&<runid>")]
+#[get("/<repo>/add/p/<name>?<verl>&<arch>&<dirs>&<id>")]
 async fn add_pkg(
 	mut db: Connection<Mg>, repo: String, name: String, verl: String, arch: String, dirs: String,
-	runid: Option<String>, auth: ApiAuth,
+	id: Option<String>, auth: ApiAuth,
 ) -> Status {
 	if !verify_token(&name, &auth.token) {
 		return Status::Forbidden;
 	}
-	let runid: Option<i32> = if let Some(runid) = runid {
-		match runid.parse() {
-			Ok(runid) => Some(runid),
-			Err(_) => return Status::BadRequest, // <== return disallows match {}
-		}
-	} else {
-		None
-	};
 	let dirs = dirs.strip_suffix("/").unwrap_or(&dirs);
 	let q = sqlx::query!(
 		"INSERT INTO pkgs(name, repo, verl, arch, dirs, build) VALUES ($1,$2,$3,$4,$5,$6)",
@@ -45,17 +41,19 @@ async fn add_pkg(
 		verl,
 		arch,
 		dirs,
-		runid
+		id
 	);
 	match q.execute(&mut *db).await {
 		Ok(res) => {
 			if res.rows_affected() != 1 {
+				eprintln!("Affected more than 1 rows?");
 				Status::InternalServerError
 			} else {
 				Status::Ok
 			}
 		},
 		Err(e) => {
+			eprintln!("{e:#?}");
 			if let Some(e) = e.as_database_error() {
 				if e.code() == Some("23505".into()) {
 					// unique_violation
@@ -149,4 +147,37 @@ async fn del_repo(mut db: Connection<Mg>, name: String, auth: ApiAuth) -> Status
 			Status::InternalServerError
 		}
 	})
+}
+
+#[get("/repos/list")]
+async fn list_repos(mut db: Connection<Mg>) -> rocket::serde::json::Value {
+	let q = qa::<_, Repo>("SELECT * FROM repos").fetch(&mut *db);
+	serde_json::json!(q.map(|x| { x.expect("Can't list repos?") }).collect::<Vec<Repo>>().await)
+}
+
+#[get("/<repo>/p/list?<n>&<order>&<offset>")]
+async fn list_pkgs(
+	mut db: Connection<Mg>, repo: String, n: Option<i64>, order: Option<String>,
+	offset: Option<i64>,
+) -> rocket::serde::json::Value {
+	if let Some(n) = n {
+		if n > MAX_LIM {
+			return serde_json::json!({"status": "400", "msg": format!("n > MAX_LIM ({MAX_LIM})")});
+		}
+	}
+	// highly electronegative atoms :3
+	let n = n.unwrap_or(MAX_LIM);
+	let o = order.unwrap_or("name DESC".into());
+	let f = offset.unwrap_or(0);
+	let res =
+		qa!(Pkg, "SELECT * FROM pkgs WHERE repo=$1 ORDER BY $2 LIMIT $3 OFFSET $4", repo, o, n, f)
+			.fetch(&mut *db)
+			.map(|x| x.ok())
+			.collect::<Vec<Option<Pkg>>>()
+			.await;
+	if res.iter().any(|x| x.is_none()) {
+		serde_json::json!({"status": "400", "msg": "Database request failed. Check your request before reporting as a bug."})
+	} else {
+		serde_json::json!(res)
+	}
 }

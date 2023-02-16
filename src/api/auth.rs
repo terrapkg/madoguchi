@@ -44,5 +44,10 @@ pub fn verify_token(id: &str, token: &str) -> bool {
 	let mut key = API_TOKEN.clone();
 	key.push_str(id);
 	hasher.update(key.as_bytes());
-	hasher.finalize()[..] == *token.as_bytes()
+	let res = &hasher.finalize()[..];
+	let mut s = String::new();
+	for x in res {
+		s.push_str(&format!("{x:02x?}"));
+	}
+	s == token.to_lowercase()
 }

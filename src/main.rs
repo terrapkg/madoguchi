@@ -27,15 +27,17 @@ async fn test(mut db: Connection<Madoguchi>) -> Option<String> {
 
 fn chks() {
 	assert!(std::env::var("GITHUB_TOKEN").is_ok(), "GITHUB_TOKEN is not found but required.");
+	assert!(std::env::var("API_TOKEN").is_ok(), "API_TOKEN cannot be empty.");
 }
 
 #[launch]
 fn rocket() -> _ {
+	dotenv::dotenv().expect("dotenv didn't work?");
 	chks();
 	rocket::build()
 		.attach(Madoguchi::init())
 		.mount("/", routes![test])
 		.mount("/redirect", api::repology::routes())
 		.mount("/ci", api::ci::routes())
-		.mount("/manual", api::manual::routes())
+		.mount("/api", api::api::routes())
 }

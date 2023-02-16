@@ -37,7 +37,7 @@ async fn add_build(
 	let ep = chrono::Utc::now().naive_utc();
 	let q = sqlx::query_as!(
 		Build,
-		"INSERT INTO builds(pname,pverl,parch,runid,repo,epoch) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *",
+		"INSERT INTO builds(pname,pverl,parch,id,repo,epoch) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *",
 		name,
 		v,
 		a,
@@ -62,7 +62,7 @@ async fn track_build(mut db: Connection<Mg>, build: Build, dirs: String) {
 	let repo = repo.fetch_one(&mut *db).await.expect("REPO DOESN'T EXIST???");
 	let mut url = repo.gh.replace("github.com", "api.github.com/repos");
 	url.push_str("/actions/runs/");
-	url.push_str(&build.runid);
+	url.push_str(&build.id);
 	loop {
 		let resp = REQ.get(&url).send().await.expect("Failed to send reqs to track build");
 		let obj: serde_json::Value = resp.json().await.expect("Failed to decode json");

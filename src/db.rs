@@ -12,32 +12,35 @@
 /// If not, see <https://www.gnu.org/licenses/>.
 ///
 use rocket_db_pools::{sqlx::PgPool, Database};
+use serde::Serialize;
 
 #[derive(Database)]
 #[database("madoguchi")]
 pub struct Madoguchi(PgPool);
 
+#[derive(sqlx::FromRow, Serialize)]
 pub struct Repo {
 	pub name: String,
 	pub link: String,
 	pub gh: String,
 }
 
+#[derive(sqlx::FromRow, Serialize)]
 pub struct Pkg {
 	pub name: String,
 	pub repo: String,
 	pub verl: String,
 	pub arch: String,
 	pub dirs: String,
-	pub build: Option<i32>,
+	pub build: Option<String>,
 }
 
+#[derive(sqlx::FromRow)]
 pub struct Build {
-	pub id: i32,
+	pub id: String,
 	pub epoch: sqlx::types::chrono::NaiveDateTime,
 	pub pname: String,
 	pub pverl: String,
 	pub parch: String,
 	pub repo: String,
-	pub runid: String,
 }
