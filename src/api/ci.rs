@@ -33,6 +33,7 @@ async fn add_build(
 	if !verify_token(&id, &auth.token) {
 		return Status::Forbidden;
 	}
+	let d = d.trim_matches('/');
 	let ep = chrono::Utc::now().naive_utc();
 	let q = sqlx::query_as!(
 		Build,
@@ -52,7 +53,7 @@ async fn add_build(
 		},
 	};
 	let hdl = rocket::tokio::runtime::Handle::current();
-	hdl.spawn(track_build(db, build, d));
+	hdl.spawn(track_build(db, build, d.to_string())); // to_string because can't move
 	Status::Ok
 }
 
@@ -67,7 +68,7 @@ async fn track_build(mut db: Connection<Mg>, build: Build, dirs: String) {
 		let obj: serde_json::Value = resp.json().await.expect("Failed to decode json");
 		if obj["status"] == "completed" {
 			if obj["conclusion"] == "success" {
-				add_pkg(db, build, dirs).await;
+				add_pkg(db, build, &dirs).await;
 			}
 			break;
 		}
@@ -75,7 +76,7 @@ async fn track_build(mut db: Connection<Mg>, build: Build, dirs: String) {
 	}
 }
 
-async fn add_pkg(mut db: Connection<Mg>, build: Build, dirs: String) {
+async fn add_pkg(mut db: Connection<Mg>, build: Build, dirs: &str) {
 	let q = sqlx::query!(
 		"INSERT INTO pkgs(name, repo, verl, arch, dirs, build) VALUES ($1,$2,$3,$4,$5,$6)",
 		build.pname,
