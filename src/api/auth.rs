@@ -1,5 +1,9 @@
-use rocket::{request::{FromRequest, self}, http::Status};
-use sha2::{Sha512, Digest};
+use base64::{engine::general_purpose::STANDARD_NO_PAD, Engine};
+use jwt_simple::prelude::*;
+use rocket::{
+	http::Status,
+	request::{self, FromRequest},
+};
 
 lazy_static::lazy_static! {
 	pub static ref REQ: reqwest::Client = {
@@ -10,7 +14,7 @@ lazy_static::lazy_static! {
 		headers.append("X-GitHub-Api-Version", "2022-11-28".parse().unwrap());
 		reqwest::Client::builder().default_headers(headers).build().unwrap()
 	};
-	pub static ref API_TOKEN: String = std::env::var("API_TOKEN").unwrap_or_default();
+	pub static ref JWT_KEY: HS256Key = HS256Key::from_bytes(&STANDARD_NO_PAD.decode(std::env::var("JWT_KEY").unwrap()).unwrap());
 }
 
 pub struct ApiAuth {
@@ -40,14 +44,7 @@ impl<'r> FromRequest<'r> for ApiAuth {
 }
 
 pub fn verify_token(id: &str, token: &str) -> bool {
-	let mut hasher = Sha512::new();
-	let mut key = API_TOKEN.clone();
-	key.push_str(id);
-	hasher.update(key.as_bytes());
-	let res = &hasher.finalize()[..];
-	let mut s = String::new();
-	for x in res {
-		s.push_str(&format!("{x:02x?}"));
-	}
-	s == token.to_lowercase()
+	let mut options = VerificationOptions::default();
+	options.required_subject = Some(id.to_owned());
+	JWT_KEY.verify_token::<NoCustomClaims>(token, Some(options)).is_ok()
 }

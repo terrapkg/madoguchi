@@ -1,3 +1,6 @@
+[workspace]
+members = ["xtask"]
+
 [package]
 name = "madoguchi"
 version = "0.1.0"
@@ -6,7 +9,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+base64 = "0.21.0"
 dotenv = "0.15.0"
+jwt-simple = "0.11.3"
 lazy_static = "1.4.0"
 reqwest = { version = "0.11.14", features = ["json"] }
 rocket = { version = "0.5.0-rc.2", features = ["json"] }
