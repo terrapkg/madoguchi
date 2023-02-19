@@ -1,4 +1,4 @@
-FROM rust:alpine as build
+FROM rust:latest as build
 
 RUN USER=root cargo new --bin madoguchi
 WORKDIR /madoguchi
@@ -20,7 +20,7 @@ COPY ./Rocket.toml ./Rocket.toml
 RUN rm ./target/release/deps/madoguchi*
 RUN cargo build --release
 
-FROM rust:alpine
+FROM rust:latest
 
 COPY --from=build /madoguchi/target/release/madoguchi .
 
