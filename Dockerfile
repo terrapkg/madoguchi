@@ -10,6 +10,7 @@ RUN cargo build --release
 RUN rm src/*.rs
 
 COPY ./src ./src
+COPY ./xtask ./xtask
 COPY ./migrations ./migrations
 COPY ./Rocket.toml ./Rocket.toml
 
