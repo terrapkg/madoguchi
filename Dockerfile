@@ -16,6 +16,7 @@ COPY ./src ./src
 COPY ./xtask/src ./xtask/src
 COPY ./migrations ./migrations
 COPY ./Rocket.toml ./Rocket.toml
+COPY ./sqlx-data.json ./sqlx-data.json
 
 RUN rm ./target/release/deps/madoguchi*
 RUN cargo build --release
