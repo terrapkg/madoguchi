@@ -15,14 +15,16 @@ use super::auth::{verify_token, ApiAuth};
 use crate::db::{Madoguchi as Mg, Pkg, Repo};
 use rocket::futures::StreamExt;
 use rocket::http::Status;
+use rocket::response::stream::TextStream;
 use rocket::{get, routes, Route};
 use rocket_db_pools::Connection;
+use serde::Serialize;
 use sqlx::query_as as qa;
 
 const MAX_LIM: i64 = 100;
 
 pub(crate) fn routes() -> Vec<Route> {
-	routes![add_pkg, del_pkg, add_repo, del_repo, list_pkgs, list_repos]
+	routes![add_pkg, del_pkg, add_repo, del_repo, list_pkgs, list_repos, pkg_info]
 }
 
 #[get("/<repo>/add/p/<name>?<verl>&<arch>&<dirs>&<id>")]
@@ -179,5 +181,67 @@ async fn list_pkgs(
 		serde_json::json!({"status": "400", "msg": "Database request failed. Check your request before reporting as a bug."})
 	} else {
 		serde_json::json!(res)
+	}
+}
+
+#[derive(Serialize)]
+struct RepologyPkg {
+	name: String,
+	version: String,
+	url: String,
+	recipe: String,
+	maintainers: Vec<String>,
+	summary: String,
+	license: Option<String>,
+	category: String,
+	rpms: Vec<String>,
+	build: Option<String>,
+	arch: String,
+}
+
+#[get("/<repo>/p/i")]
+async fn pkg_info(mut db: Connection<Mg>, repo: String) -> TextStream![String] {
+	TextStream! {
+		let r = match qa!(Repo, "SELECT * FROM repos WHERE name = $1", repo).fetch_one(&mut *db).await {
+			Ok(r) => r,
+			Err(e) => {
+				if e.to_string() == "no rows returned by a query that expected to return at least one row" {
+					yield serde_json::json!({
+						"status": "404",
+						"message": "repo not found"
+					}).to_string();
+				} else {
+					yield serde_json::json!({
+						"status": "400",
+						"message": e.to_string(),
+					}).to_string();
+				}
+				return;
+			}
+		};
+		let mut res = qa!(Pkg, "SELECT * FROM pkgs WHERE repo=$1", repo).fetch(&mut *db);
+		yield "[".into();
+		let first = true;
+		while let Some(item) = res.next().await {
+			if !first {
+				yield ",".into();
+			}
+			if let Ok(pkg) = item {
+			yield serde_json::json!( RepologyPkg {
+				name: pkg.name,
+				version: pkg.verl,
+				url: format!("{}/{}", r.gh, pkg.dirs.clone()),
+				arch: pkg.arch,
+				build: pkg.build.map(|b| format!("https://github.com/terrapkg/packages/actions/runs/{}", b)),
+				category: pkg.dirs.clone(),
+				license: None, // todo
+				maintainers: vec![], // todo
+				recipe: format!("{}/{}/anda.hcl", r.gh, pkg.dirs.clone()),
+				rpms: vec![], // todo
+				summary: "".into() // todo
+			}).to_string();
+		}
+		yield "]".into();
+		}
 	}
 }
