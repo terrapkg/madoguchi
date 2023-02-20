@@ -25,22 +25,22 @@ pub(crate) fn routes() -> Vec<Route> {
 	routes![add_build]
 }
 
-#[get("/<repo>/add/b/<name>?<v>&<a>&<d>&<id>")]
+#[get("/<repo>/add/builds/<name>?<verl>&<arch>&<dirs>&<id>")]
 async fn add_build(
-	mut db: Connection<Mg>, repo: String, name: String, v: String, a: String, d: String,
+	mut db: Connection<Mg>, repo: String, name: String, verl: String, arch: String, dirs: String,
 	id: String, auth: ApiAuth,
 ) -> Status {
 	if !verify_token(&id, &auth.token) {
 		return Status::Forbidden;
 	}
-	let d = d.trim_matches('/');
+	let d = dirs.trim_matches('/');
 	let ep = chrono::Utc::now().naive_utc();
 	let q = sqlx::query_as!(
 		Build,
 		"INSERT INTO builds(pname,pverl,parch,id,repo,epoch) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *",
 		name,
-		v,
-		a,
+		verl,
+		arch,
 		id,
 		repo,
 		ep

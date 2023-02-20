@@ -16,7 +16,7 @@ use crate::db::{Madoguchi as Mg, Pkg, Repo};
 use rocket::futures::StreamExt;
 use rocket::http::Status;
 use rocket::response::stream::TextStream;
-use rocket::{get, routes, Route};
+use rocket::{delete, get, routes, Route};
 use rocket_db_pools::Connection;
 use serde::Serialize;
 use sqlx::query_as as qa;
@@ -27,7 +27,7 @@ pub(crate) fn routes() -> Vec<Route> {
 	routes![add_pkg, del_pkg, add_repo, del_repo, list_pkgs, list_repos, pkg_info]
 }
 
-#[get("/<repo>/add/p/<name>?<verl>&<arch>&<dirs>&<id>")]
+#[get("/<repo>/add/packages/<name>?<verl>&<arch>&<dirs>&<id>")]
 async fn add_pkg(
 	mut db: Connection<Mg>, repo: String, name: String, verl: String, arch: String, dirs: String,
 	id: Option<String>, auth: ApiAuth,
@@ -70,7 +70,7 @@ async fn add_pkg(
 	}
 }
 
-#[get("/<repo>/del/p/<name>?<verl>&<arch>")]
+#[delete("/<repo>/del/packages/<name>?<verl>&<arch>")]
 async fn del_pkg(
 	mut db: Connection<Mg>, repo: String, name: String, verl: String, arch: String, auth: ApiAuth,
 ) -> Status {
@@ -157,7 +157,7 @@ async fn list_repos(mut db: Connection<Mg>) -> rocket::serde::json::Value {
 	serde_json::json!(q.map(|x| { x.expect("Can't list repos?") }).collect::<Vec<Repo>>().await)
 }
 
-#[get("/<repo>/p/list?<n>&<order>&<offset>")]
+#[get("/<repo>/packages/list?<n>&<order>&<offset>")]
 async fn list_pkgs(
 	mut db: Connection<Mg>, repo: String, n: Option<i64>, order: Option<String>,
 	offset: Option<i64>,
@@ -199,7 +199,7 @@ struct RepologyPkg {
 	arch: String,
 }
 
-#[get("/<repo>/p/i")]
+#[get("/<repo>/packages/info")]
 async fn pkg_info(mut db: Connection<Mg>, repo: String) -> TextStream![String] {
 	TextStream! {
 		let r = match qa!(Repo, "SELECT * FROM repos WHERE name = $1", repo).fetch_one(&mut *db).await {
