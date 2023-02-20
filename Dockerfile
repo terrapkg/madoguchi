@@ -15,7 +15,7 @@ RUN rm src/*.rs xtask/src/*.rs
 COPY ./src ./src
 COPY ./xtask/src ./xtask/src
 COPY ./migrations ./migrations
-COPY ./Rocket.toml ./Rocket.toml
+COPY ./Rocket.toml.example ./Rocket.toml
 COPY ./sqlx-data.json ./sqlx-data.json
 
 RUN rm ./target/release/deps/madoguchi*
