@@ -1,2 +1,0 @@
-[default.databases.madoguchi]
-url = "postgres://postgres@db/postgres"

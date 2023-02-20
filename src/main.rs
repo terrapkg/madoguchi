@@ -16,13 +16,12 @@
 mod api;
 mod db;
 
-use db::Madoguchi;
 use rocket::*;
-use rocket_db_pools::{Connection, Database};
+use rocket_db_pools::Database;
 
-#[get("/test")]
-async fn test(mut db: Connection<Madoguchi>) -> Option<String> {
-	sqlx::query!("SELECT * FROM repos").fetch_one(&mut *db).await.map(|record| record.name).ok()
+#[get("/")]
+async fn index() -> response::Redirect {
+	response::Redirect::to("https://terra.fyralabs.com/")
 }
 
 fn chks() {
@@ -35,8 +34,8 @@ fn rocket() -> _ {
 	dotenv::dotenv().expect("dotenv didn't work?");
 	chks();
 	rocket::build()
-		.attach(Madoguchi::init())
-		.mount("/", routes![test])
+		.attach(db::Madoguchi::init())
+		.mount("/", routes![index])
 		.mount("/redirect", api::repology::routes())
 		.mount("/ci", api::ci::routes())
 		.mount("/api", api::api::routes())
