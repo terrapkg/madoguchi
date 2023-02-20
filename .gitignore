@@ -12,3 +12,4 @@ target/
 # Madoguchi-specific
 .env
 !.devcontainer/.env
+Rocket.toml
