@@ -1,0 +1,296 @@
+{
+  "db": "PostgreSQL",
+  "21af2e9bfdd12c2309e559f7c350136713eece9e4b8f0d6b104e7c91ae99a39d": {
+    "describe": {
+      "columns": [
+        {
+          "name": "name",
+          "ordinal": 0,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "link",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "gh",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "SELECT * FROM repos"
+  },
+  "4272fecee5319e2299ab4ee52d2f37b219474d5cca3c1cc5e99878c446130001": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "epoch",
+          "ordinal": 1,
+          "type_info": "Timestamp"
+        },
+        {
+          "name": "pname",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "pverl",
+          "ordinal": 3,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "parch",
+          "ordinal": 4,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "repo",
+          "ordinal": 5,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          "Timestamp"
+        ]
+      }
+    },
+    "query": "INSERT INTO builds(pname,pverl,parch,id,repo,epoch) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *"
+  },
+  "48eb467736936f86ce7271ae3044c259611a5e126c659d5bcb5334ac8ed7965b": {
+    "describe": {
+      "columns": [
+        {
+          "name": "name",
+          "ordinal": 0,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "repo",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "verl",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "arch",
+          "ordinal": 3,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "dirs",
+          "ordinal": 4,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "build",
+          "ordinal": 5,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Text",
+          "Int8",
+          "Int8"
+        ]
+      }
+    },
+    "query": "SELECT * FROM pkgs WHERE repo=$1 ORDER BY $2 LIMIT $3 OFFSET $4"
+  },
+  "567086729fc148c5c4ec75a05595d9038d322473b947983293b45cad5f85099a": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "DELETE FROM builds WHERE repo = $1"
+  },
+  "5ac1497331683b1171fc3f2ad205d66081179614deac5ce1f4d44f7306f5d63d": {
+    "describe": {
+      "columns": [
+        {
+          "name": "name",
+          "ordinal": 0,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "link",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "gh",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT * FROM repos WHERE name = $1"
+  },
+  "7937b4ddcde1bacb9b59a81e6db9d664eae507694fefdf8f8ca57aecb0c789b7": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          "Varchar"
+        ]
+      }
+    },
+    "query": "INSERT INTO pkgs(name, repo, verl, arch, dirs, build) VALUES ($1,$2,$3,$4,$5,$6)"
+  },
+  "795b6d18692a9b1612be571568a0849ee6e3302d46b8f755d6005788142884f8": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Varchar",
+          "Varchar"
+        ]
+      }
+    },
+    "query": "INSERT INTO repos(name, link, gh) VALUES ($1,$2,$3)"
+  },
+  "9028ebda5a05c2cd45d7cddac28a6a0c597a41baa1e9b2792458d57f52d55408": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "DELETE FROM repos WHERE name = $1"
+  },
+  "b6aca82fc4987cd2061196d3b822ee14042bcfc1ba67cdb4197208d62ed8d089": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Text",
+          "Text",
+          "Text"
+        ]
+      }
+    },
+    "query": "DELETE FROM pkgs WHERE name=$1 AND repo=$2 AND verl=$3 AND arch=$4"
+  },
+  "dc0a9ad5b6c33935b63804ed4af2d5e495301adf5a1f0fa88691d64951177ece": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "DELETE FROM pkgs WHERE repo = $1"
+  },
+  "fb32602d3df6283b71b162f96df7d58d7513e1ab38b62eff650a939a29bc57b0": {
+    "describe": {
+      "columns": [
+        {
+          "name": "dirs",
+          "ordinal": 0,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT dirs FROM pkgs WHERE name = $1 AND repo = $2 ORDER BY verl DESC"
+  },
+  "ff8fb78d6c7e0c461748b00b307d5e6596adc01add7eac621be6d68000f0e821": {
+    "describe": {
+      "columns": [
+        {
+          "name": "link",
+          "ordinal": 0,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT link FROM repos WHERE name = $1"
+  }
+}

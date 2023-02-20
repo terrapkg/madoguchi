@@ -8,4 +8,4 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
 
 USER vscode
 
-RUN cargo install sqlx-cli
+RUN cargo install sqlx-cli@0.5.13
