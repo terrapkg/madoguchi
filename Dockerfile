@@ -25,4 +25,7 @@ FROM rust:latest
 
 COPY --from=build /madoguchi/target/release/madoguchi .
 
+ENV ROCKET_ADDRESS=0.0.0.0
+ENV ROCKET_PORT=8000
+
 CMD ["./madoguchi"]
