@@ -6,14 +6,6 @@ use rocket::{
 };
 
 lazy_static::lazy_static! {
-	pub static ref REQ: reqwest::Client = {
-		use reqwest::header::*;
-		let mut headers = HeaderMap::new();
-		headers.append(ACCEPT, "application/vnd.github+json".parse().unwrap());
-		headers.append(AUTHORIZATION, format!("Bearer {}", std::env::var("GITHUB_TOKEN").unwrap()).parse().unwrap());
-		headers.append("X-GitHub-Api-Version", "2022-11-28".parse().unwrap());
-		reqwest::Client::builder().default_headers(headers).build().unwrap()
-	};
 	pub static ref JWT_KEY: HS256Key = HS256Key::from_bytes(&STANDARD_NO_PAD.decode(std::env::var("JWT_KEY").unwrap()).unwrap());
 }
 

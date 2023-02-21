@@ -25,7 +25,6 @@ async fn index() -> response::Redirect {
 }
 
 fn chks() {
-	assert!(std::env::var("GITHUB_TOKEN").is_ok(), "GITHUB_TOKEN is not found but required.");
 	assert!(std::env::var("JWT_KEY").is_ok(), "JWT_KEY cannot be empty.");
 }
 
