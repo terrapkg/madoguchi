@@ -30,7 +30,7 @@ fn chks() {
 
 #[launch]
 fn rocket() -> _ {
-	dotenv::dotenv().expect("dotenv didn't work?");
+	dotenv::dotenv().ok();
 	chks();
 	rocket::build()
 		.attach(db::Madoguchi::init())
