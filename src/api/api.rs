@@ -14,6 +14,7 @@
 use super::auth::{verify_token, ApiAuth};
 use crate::db::{Madoguchi as Mg, Pkg, Repo};
 use rocket::futures::StreamExt;
+use rocket::futures::channel::mpsc::{Receiver, Sender, self};
 use rocket::http::Status;
 use rocket::response::stream::TextStream;
 use rocket::{delete, get, routes, Route};
@@ -184,20 +185,20 @@ async fn list_pkgs(
 	}
 }
 
-#[derive(Serialize)]
-struct RepologyPkg {
-	name: String,
-	version: String,
-	url: String,
-	recipe: String,
-	maintainers: Vec<String>,
-	summary: String,
-	license: Option<String>,
-	category: String,
-	rpms: Vec<String>,
-	build: Option<String>,
-	arch: String,
-}
+// #[derive(Serialize)]
+// struct RepologyPkg {
+// 	name: String,
+// 	version: String,
+// 	url: String,
+// 	recipe: String,
+// 	maintainers: Vec<String>,
+// 	summary: String,
+// 	license: Option<String>,
+// 	category: String,
+// 	rpms: Vec<String>,
+// 	build: Option<String>,
+// 	arch: String,
+// }
 
 #[get("/<repo>/packages/info")]
 async fn pkg_info(mut db: Connection<Mg>, repo: String) -> TextStream![String] {
@@ -219,7 +220,30 @@ async fn pkg_info(mut db: Connection<Mg>, repo: String) -> TextStream![String] {
 				return;
 			}
 		};
-		let mut res = qa!(Pkg, "SELECT * FROM pkgs WHERE repo=$1", repo).fetch(&mut *db);
+		let mut primaryurl = String::new();
+		match reqwest::get(format!("{}/repodata/repomd.xml", r.link)).await {
+			Ok(resp) => {
+				for line in resp.text().await.unwrap().lines() {
+					if line.ends_with(r#"-primary.xml.gz"/>"#) {
+						primaryurl = line.strip_prefix(|s| s != '/').unwrap().strip_suffix("\"/>").unwrap().to_string();
+						break;
+					}
+				}
+				if primaryurl.is_empty() {
+					yield serde_json::json!({"status": "500", "message": "cannot fetch repomd"}).to_string();
+					return;
+				}
+				primaryurl = format!("{}{primaryurl}", r.link).to_string();
+			},
+			Err(_) => {
+				yield serde_json::json!({"status": "500", "message": "cannot fetch repomd"}).to_string();
+				return;
+			}
+		};
+		let (tx, rx): (Sender<Vec<u8>>, Receiver<Vec<u8>>) = mpsc::channel(512);
+		let dlhdr = rocket::tokio::spawn(crate::repopkgs_parse::get_primary_xml(primaryurl, tx));
+		let parser = rocket::tokio::spawn(crate::repopkgs_parse::parse_primary_xml(rx));
+		let mut res = qa!(Pkg, "SELECT * FROM pkgs WHERE repo=$1 ORDER BY name", repo).fetch(&mut *db);
 		yield "[".into();
 		let first = true;
 		while let Some(item) = res.next().await {
@@ -227,21 +251,23 @@ async fn pkg_info(mut db: Connection<Mg>, repo: String) -> TextStream![String] {
 				yield ",".into();
 			}
 			if let Ok(pkg) = item {
-			yield serde_json::json!( RepologyPkg {
-				name: pkg.name,
-				version: pkg.verl,
-				url: format!("{}/{}", r.gh, pkg.dirs.clone()),
-				arch: pkg.arch,
-				build: pkg.build.map(|b| format!("https://github.com/terrapkg/packages/actions/runs/{}", b)),
-				category: pkg.dirs.clone(),
-				license: None, // todo
-				maintainers: vec![], // todo
-				recipe: format!("{}/{}/anda.hcl", r.gh, pkg.dirs.clone()),
-				rpms: vec![], // todo
-				summary: "".into() // todo
+			yield serde_json::json!({
+				"name": pkg.name,
+				"version": pkg.verl,
+				"url": format!("{}/{}", r.gh, pkg.dirs.clone()),
+				"arch": pkg.arch,
+				"build": pkg.build.map(|b| format!("https://github.com/terrapkg/packages/actions/runs/{}", b)),
+				"category": pkg.dirs.clone(),
+				// "license": None, // todo
+				// "maintainers": vec![], // todo
+				"recipe": format!("{}/{}/anda.hcl", r.gh, pkg.dirs.clone()),
+				// "rpms": vec![], // todo
+				// "summary": "".into() // todo
 			}).to_string();
 		}
 		yield "]".into();
 		}
+		dlhdr.await.unwrap();
+		parser.await.unwrap();
 	}
 }

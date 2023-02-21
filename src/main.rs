@@ -15,6 +15,7 @@
 //
 mod api;
 mod db;
+pub mod repopkgs_parse;
 
 use rocket::*;
 use rocket_db_pools::Database;

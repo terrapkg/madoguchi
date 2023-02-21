@@ -9,11 +9,13 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+async-compression = { version = "0.3.15", features = ["gzip", "futures-io"] }
 base64 = "0.21.0"
 dotenv = "0.15.0"
 jwt-simple = "0.11.3"
 lazy_static = "1.4.0"
-reqwest = { version = "0.11.14", features = ["json"] }
+quick-xml = { version = "0.27.1", features = ["async-tokio", "serialize"] }
+reqwest = { version = "0.11.14", features = ["json", "stream"] }
 rocket = { version = "0.5.0-rc.2", features = ["json"] }
 rocket_db_pools = { version = "0.1.0-rc.2", features = ["sqlx_postgres"] }
 serde = "1.0.152"
