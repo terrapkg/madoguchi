@@ -24,6 +24,11 @@ async fn index() -> response::Redirect {
 	response::Redirect::to("https://terra.fyralabs.com/")
 }
 
+#[get("/health")]
+async fn health() -> &'static str {
+	"."
+}
+
 fn chks() {
 	assert!(std::env::var("JWT_KEY").is_ok(), "JWT_KEY cannot be empty.");
 }
@@ -34,7 +39,7 @@ fn rocket() -> _ {
 	chks();
 	rocket::build()
 		.attach(db::Madoguchi::init())
-		.mount("/", routes![index])
+		.mount("/", routes![index, health])
 		.mount("/redirect", api::repology::routes())
 		.mount("/ci", api::ci::routes())
 		.mount("/api", api::api::routes())
