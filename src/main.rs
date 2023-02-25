@@ -15,7 +15,6 @@
 //
 mod api;
 mod db;
-
 use rocket::*;
 use rocket_db_pools::Database;
 
@@ -33,12 +32,26 @@ fn chks() {
 	assert!(std::env::var("JWT_KEY").is_ok(), "JWT_KEY cannot be empty.");
 }
 
+async fn migrate(rocket: Rocket<Build>) -> fairing::Result {
+	match db::Madoguchi::fetch(&rocket) {
+		Some(db) => match sqlx::migrate!().run(&**db).await {
+			Ok(_) => Ok(rocket),
+			Err(e) => {
+				error!("Fail to init db: {}", e);
+				Err(rocket)
+			},
+		},
+		None => Err(rocket),
+	}
+}
+
 #[launch]
-fn rocket() -> _ {
+async fn rocket() -> _ {
 	dotenv::dotenv().ok();
 	chks();
 	rocket::build()
 		.attach(db::Madoguchi::init())
+		.attach(rocket::fairing::AdHoc::try_on_ignite("Migrations", migrate))
 		.mount("/", routes![index, health])
 		.mount("/redirect", api::repology::routes())
 		.mount("/ci", api::ci::routes())
