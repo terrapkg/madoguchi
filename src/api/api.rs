@@ -95,7 +95,7 @@ async fn del_pkg(
 async fn add_repo(
 	mut db: Connection<Mg>, name: String, link: String, gh: String, auth: ApiAuth,
 ) -> Status {
-	if !verify_token(&repo, &auth.token) {
+	if !verify_token(&name, &auth.token) {
 		return Status::Forbidden;
 	}
 	let link = link.strip_suffix("/").unwrap_or(&link);
@@ -125,7 +125,7 @@ async fn add_repo(
 
 #[get("/repos/del/<name>")]
 async fn del_repo(mut db: Connection<Mg>, name: String, auth: ApiAuth) -> Status {
-	if !verify_token(&repo, &auth.token) {
+	if !verify_token(&name, &auth.token) {
 		return Status::Forbidden;
 	}
 	// the main point is to delete from the `repos` table, so we ignore errors
