@@ -27,7 +27,7 @@ async fn add_build(
 	mut db: Connection<Mg>, repo: String, name: String, verl: String, arch: String,
 	dirs: Option<String>, id: String, auth: ApiAuth,
 ) -> Status {
-	if !verify_token(&id, &auth.token) {
+	if !verify_token(&repo, &auth.token) {
 		return Status::Forbidden;
 	}
 	let ep = chrono::Utc::now().naive_utc();

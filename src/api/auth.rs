@@ -35,8 +35,17 @@ impl<'r> FromRequest<'r> for ApiAuth {
 	}
 }
 
-pub fn verify_token(id: &str, token: &str) -> bool {
+#[derive(Serialize, Deserialize)]
+struct CustomClaims {
+	// Right now, this is the same as subatomic, where admin is only currently supported
+	scopes: Vec<String>,
+}
+
+pub fn verify_token(repo: &str, token: &str) -> bool {
 	let mut options = VerificationOptions::default();
-	options.required_subject = Some(id.to_owned());
-	JWT_KEY.verify_token::<NoCustomClaims>(token, Some(options)).is_ok()
+	if let Ok(claims) = JWT_KEY.verify_token::<CustomClaims>(token, Some(options)) {
+		claims.custom.scopes.contains(&"admin".to_string())
+	} else {
+		false
+	}
 }
