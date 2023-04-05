@@ -50,36 +50,6 @@
     },
     "query": "SELECT * FROM pkgs WHERE repo=$1"
   },
-  "21af2e9bfdd12c2309e559f7c350136713eece9e4b8f0d6b104e7c91ae99a39d": {
-    "describe": {
-      "columns": [
-        {
-          "name": "name",
-          "ordinal": 0,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "link",
-          "ordinal": 1,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "gh",
-          "ordinal": 2,
-          "type_info": "Varchar"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "SELECT * FROM repos"
-  },
   "4272fecee5319e2299ab4ee52d2f37b219474d5cca3c1cc5e99878c446130001": {
     "describe": {
       "columns": [
@@ -301,6 +271,57 @@
       }
     },
     "query": "DELETE FROM pkgs WHERE repo = $1"
+  },
+  "f2c6db4873b35819782bbe8c9b109210a0c6d3efcc7cc0c2dc72b3341c4e8570": {
+    "describe": {
+      "columns": [
+        {
+          "name": "name",
+          "ordinal": 0,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "repo",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "verl",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "arch",
+          "ordinal": 3,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "dirs",
+          "ordinal": 4,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "build",
+          "ordinal": 5,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT * FROM pkgs WHERE repo=$1 AND name=$2"
   },
   "fb32602d3df6283b71b162f96df7d58d7513e1ab38b62eff650a939a29bc57b0": {
     "describe": {
