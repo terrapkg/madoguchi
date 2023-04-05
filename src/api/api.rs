@@ -214,7 +214,7 @@ struct RepologyPkg {
 	arch: String,
 }
 
-#[get("/<repo>/packages")]
+#[get("/<repo>/packages-all")]
 async fn list_pkgs(mut db: Connection<Mg>, repo: String) -> (Status, Option<TextStream![String]>) {
 	let r = match qa!(Repo, "SELECT * FROM repos WHERE name = $1", repo).fetch_one(&mut *db).await {
 		Ok(r) => r,
@@ -240,21 +240,21 @@ async fn list_pkgs(mut db: Connection<Mg>, repo: String) -> (Status, Option<Text
 					yield ",".into();
 				}
 				if let Ok(pkg) = item {
-				yield serde_json::json!( RepologyPkg {
-					name: pkg.name,
-					version: pkg.verl,
-					url: format!("{}/{}", r.gh, pkg.dirs.clone()),
-					arch: pkg.arch,
-					build: pkg.build.map(|b| format!("https://github.com/terrapkg/packages/actions/runs/{}", b)),
-					category: pkg.dirs.clone(),
-					license: None, // todo
-					maintainers: vec![], // todo
-					recipe: format!("{}/{}/anda.hcl", r.gh, pkg.dirs.clone()),
-					rpms: vec![], // todo
-					summary: "".into() // todo
-				}).to_string();
-			}
-			yield "]".into();
+					yield serde_json::json!( RepologyPkg {
+						name: pkg.name,
+						version: pkg.verl,
+						url: format!("{}/{}", r.gh, pkg.dirs.clone()),
+						arch: pkg.arch,
+						build: pkg.build.map(|b| format!("https://github.com/terrapkg/packages/actions/runs/{}", b)),
+						category: pkg.dirs.clone(),
+						license: None, // todo
+						maintainers: vec![], // todo
+						recipe: format!("{}/{}/anda.hcl", r.gh, pkg.dirs.clone()),
+						rpms: vec![], // todo
+						summary: "".into() // todo
+					}).to_string();
+				}
+				yield "]".into();
 			}
 		}),
 	)

@@ -17,7 +17,7 @@ mod api;
 mod db;
 use rocket::*;
 use rocket_db_pools::Database;
-use tracing::{info, error};
+use tracing::{error, info};
 use tracing_subscriber::layer::SubscriberExt;
 
 #[get("/")]
@@ -49,7 +49,9 @@ async fn migrate(rocket: Rocket<Build>) -> fairing::Result {
 
 #[launch]
 async fn rocket() -> _ {
-	let tracer = opentelemetry_sdk::export::trace::stdout::new_pipeline().with_pretty_print(true).install_simple();
+	let tracer = opentelemetry_sdk::export::trace::stdout::new_pipeline()
+		.with_pretty_print(true)
+		.install_simple();
 	let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
 	let sub = tracing_subscriber::fmt().compact().without_time().finish().with(telemetry);
 	tracing::subscriber::set_global_default(sub).expect("Cannot set default tracing subscriber");
