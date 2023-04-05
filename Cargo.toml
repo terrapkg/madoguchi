@@ -13,10 +13,16 @@ base64 = "0.21.0"
 dotenv = "0.15.0"
 jwt-simple = "0.11.3"
 lazy_static = "1.4.0"
+opentelemetry_sdk = "0.18.0"
+opentelemetry_api = "0.18.0"
 reqwest = { version = "0.11.14", features = ["json"] }
 rocket = { version = "0.5.0-rc.2", features = ["json"] }
 rocket_db_pools = { version = "0.1.0-rc.2", features = ["sqlx_postgres"] }
 serde = "1.0.152"
 serde_json = "1.0.93"
 sha2 = "0.10.6"
-sqlx = { version = "0.5.13", features = ["runtime-tokio-rustls", "postgres", "chrono", "macros", "json", "offline"] }
+sqlx = { version = "0.6.3", features = ["runtime-tokio-rustls", "postgres", "chrono", "macros", "json", "offline"] }
+tracing = "0.1.37"
+tracing-opentelemetry = "0.18.0"
+tracing-subscriber = "0.3.16"
+tracing-log = "0.1.3"

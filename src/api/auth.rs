@@ -42,7 +42,7 @@ struct CustomClaims {
 }
 
 pub fn verify_token(repo: &str, token: &str) -> bool {
-	let mut options = VerificationOptions::default();
+	let options = VerificationOptions::default();
 	if let Ok(claims) = JWT_KEY.verify_token::<CustomClaims>(token, Some(options)) {
 		claims.custom.scopes.contains(&"admin".to_string())
 	} else {

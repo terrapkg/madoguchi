@@ -15,8 +15,12 @@
 //
 mod api;
 mod db;
+use opentelemetry_sdk::export::trace::stdout;
 use rocket::*;
 use rocket_db_pools::Database;
+use tracing::{info, error};
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::Registry;
 
 #[get("/")]
 async fn index() -> response::Redirect {
@@ -37,7 +41,7 @@ async fn migrate(rocket: Rocket<Build>) -> fairing::Result {
 		Some(db) => match sqlx::migrate!().run(&**db).await {
 			Ok(_) => Ok(rocket),
 			Err(e) => {
-				error!("Fail to init db: {}", e);
+				error!("Fail to init db: {e}");
 				Err(rocket)
 			},
 		},
@@ -47,6 +51,12 @@ async fn migrate(rocket: Rocket<Build>) -> fairing::Result {
 
 #[launch]
 async fn rocket() -> _ {
+	let tracer = stdout::new_pipeline().install_simple();
+	let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
+	let subscriber = Registry::default().with(telemetry);
+	tracing::subscriber::set_global_default(subscriber).expect("Cannot set default tracing subscriber");
+	tracing_log::LogTracer::init().expect("Cannot init tracing_log");
+	info!("Kurau");
 	dotenv::dotenv().ok();
 	chks();
 	rocket::build()
