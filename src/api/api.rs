@@ -26,7 +26,7 @@ use tracing::error;
 const MAX_LIM: i64 = 100;
 
 pub(crate) fn routes() -> Vec<Route> {
-	routes![add_pkg, del_pkg, add_repo, del_repo, list_pkgs, list_repos, pkg_info]
+	routes![add_pkg, del_pkg, add_repo, del_repo, list_pkgs, list_repos, search_pkgs, pkg_info]
 }
 
 #[derive(Deserialize)]
@@ -173,7 +173,7 @@ async fn list_repos(mut db: Connection<Mg>) -> rocket::serde::json::Value {
 }
 
 #[get("/<repo>/packages?<n>&<order>&<offset>")]
-async fn list_pkgs(
+async fn search_pkgs(
 	mut db: Connection<Mg>, repo: String, n: Option<i64>, order: Option<String>,
 	offset: Option<i64>,
 ) -> Result<rocket::serde::json::Value, Status> {
@@ -215,7 +215,7 @@ struct RepologyPkg {
 }
 
 #[get("/<repo>/packages")]
-async fn pkg_info(mut db: Connection<Mg>, repo: String) -> (Status, Option<TextStream![String]>) {
+async fn list_pkgs(mut db: Connection<Mg>, repo: String) -> (Status, Option<TextStream![String]>) {
 	let r = match qa!(Repo, "SELECT * FROM repos WHERE name = $1", repo).fetch_one(&mut *db).await {
 		Ok(r) => r,
 		Err(e) => {
@@ -258,4 +258,18 @@ async fn pkg_info(mut db: Connection<Mg>, repo: String) -> (Status, Option<TextS
 			}
 		}),
 	)
+}
+
+#[get("/<repo>/packages/<name>")]
+async fn pkg_info(
+	mut db: Connection<Mg>, repo: String, name: String,
+) -> Result<rocket::serde::json::Value, Status> {
+	let res = qa!(Pkg, "SELECT * FROM pkgs WHERE repo=$1 AND name=$2", repo, name)
+		.fetch_one(&mut *db)
+		.await;
+	if let Ok(res) = res {
+		Ok(serde_json::json!(res))
+	} else {
+		Err(Status::NotFound)
+	}
 }
