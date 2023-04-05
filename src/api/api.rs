@@ -15,9 +15,9 @@ use super::auth::{verify_token, ApiAuth};
 use crate::db::{Madoguchi as Mg, Pkg, Repo};
 use rocket::futures::StreamExt;
 use rocket::http::Status;
-use rocket::response::stream::TextStream;
+use rocket::response::{status, stream::TextStream};
 use rocket::serde::json::Json;
-use rocket::{delete, get, put, routes, Route};
+use rocket::{delete, get, put, routes, Response, Route};
 use rocket_db_pools::Connection;
 use serde::{Deserialize, Serialize};
 use sqlx::query_as as qa;
@@ -59,7 +59,7 @@ async fn add_pkg(
 				eprintln!("Affected more than 1 rows?");
 				Status::InternalServerError
 			} else {
-				Status::Ok
+				Status::NoContent
 			}
 		},
 		Err(e) => {
@@ -93,7 +93,7 @@ async fn del_pkg(
 		arch
 	);
 	if q.execute(&mut *db).await.map_or(false, |r| r.rows_affected() == 1) {
-		Status::Ok
+		Status::NoContent
 	} else {
 		Status::InternalServerError
 	}
@@ -120,7 +120,7 @@ async fn add_repo(
 			if res.rows_affected() != 1 {
 				Status::InternalServerError
 			} else {
-				Status::Ok
+				Status::NoContent
 			}
 		},
 		Err(e) => {
@@ -155,7 +155,7 @@ async fn del_repo(mut db: Connection<Mg>, name: String, auth: ApiAuth) -> Status
 	let q = sqlx::query!("DELETE FROM repos WHERE name = $1", name);
 	q.execute(&mut *db).await.map_or(Status::InternalServerError, |r| {
 		if r.rows_affected() == 1 {
-			Status::Ok
+			Status::NoContent
 		} else if r.rows_affected() == 0 {
 			Status::BadRequest
 		} else {
@@ -175,10 +175,10 @@ async fn list_repos(mut db: Connection<Mg>) -> rocket::serde::json::Value {
 async fn list_pkgs(
 	mut db: Connection<Mg>, repo: String, n: Option<i64>, order: Option<String>,
 	offset: Option<i64>,
-) -> rocket::serde::json::Value {
+) -> Result<rocket::serde::json::Value, Status> {
 	if let Some(n) = n {
 		if n > MAX_LIM {
-			return serde_json::json!({"status": "400", "msg": format!("n > MAX_LIM ({MAX_LIM})")});
+			return Err(Status::NotFound);
 		}
 	}
 	// highly electronegative atoms :3
@@ -192,9 +192,9 @@ async fn list_pkgs(
 			.collect::<Vec<Option<Pkg>>>()
 			.await;
 	if res.iter().any(|x| x.is_none()) {
-		serde_json::json!({"status": "400", "msg": "Database request failed. Check your request before reporting as a bug."})
+		Err(Status::NotFound)
 	} else {
-		serde_json::json!(res)
+		Ok(serde_json::json!(res))
 	}
 }
 
@@ -213,6 +213,7 @@ struct RepologyPkg {
 	arch: String,
 }
 
+// TODO(lleyton): I- what
 #[get("/<repo>/packages")]
 async fn pkg_info(mut db: Connection<Mg>, repo: String) -> TextStream![String] {
 	TextStream! {
