@@ -71,5 +71,5 @@ async fn add_build(
 		);
 		assert_eq!(q.execute(&mut *db).await.expect("Failed to insert new pkg").rows_affected(), 1);
 	}
-	Status::Ok
+	Status::Created
 }
