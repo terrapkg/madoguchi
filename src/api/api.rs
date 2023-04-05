@@ -16,9 +16,10 @@ use crate::db::{Madoguchi as Mg, Pkg, Repo};
 use rocket::futures::StreamExt;
 use rocket::http::Status;
 use rocket::response::stream::TextStream;
-use rocket::{delete, get, routes, Route};
+use rocket::serde::json::Json;
+use rocket::{delete, get, put, routes, Route};
 use rocket_db_pools::Connection;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sqlx::query_as as qa;
 
 const MAX_LIM: i64 = 100;
@@ -27,23 +28,30 @@ pub(crate) fn routes() -> Vec<Route> {
 	routes![add_pkg, del_pkg, add_repo, del_repo, list_pkgs, list_repos, pkg_info]
 }
 
-#[get("/<repo>/add/packages/<name>?<verl>&<arch>&<dirs>&<id>")]
+#[derive(Deserialize)]
+struct AddPkgBody {
+	id: Option<String>,
+	verl: String,
+	arch: String,
+	dirs: String,
+}
+
+#[put("/<repo>/add/packages/<name>", data = "<package>")]
 async fn add_pkg(
-	mut db: Connection<Mg>, repo: String, name: String, verl: String, arch: String, dirs: String,
-	id: Option<String>, auth: ApiAuth,
+	mut db: Connection<Mg>, auth: ApiAuth, repo: String, name: String, package: Json<AddPkgBody>,
 ) -> Status {
 	if !verify_token(&repo, &auth.token) {
 		return Status::Forbidden;
 	}
-	let dirs = dirs.strip_suffix("/").unwrap_or(&dirs);
+	let dirs = package.dirs.strip_suffix("/").unwrap_or(&package.dirs);
 	let q = sqlx::query!(
 		"INSERT INTO pkgs(name, repo, verl, arch, dirs, build) VALUES ($1,$2,$3,$4,$5,$6)",
 		name,
 		repo,
-		verl,
-		arch,
+		package.verl,
+		package.arch,
 		dirs,
-		id
+		package.id
 	);
 	match q.execute(&mut *db).await {
 		Ok(res) => {
@@ -91,15 +99,21 @@ async fn del_pkg(
 	}
 }
 
-#[get("/repos/add/<name>?<link>&<gh>")]
+#[derive(Deserialize)]
+struct AddRepoBody {
+	link: String,
+	gh: String,
+}
+
+#[put("/repos/add/<name>", data = "<repo>")]
 async fn add_repo(
-	mut db: Connection<Mg>, name: String, link: String, gh: String, auth: ApiAuth,
+	mut db: Connection<Mg>, name: String, repo: Json<AddRepoBody>, auth: ApiAuth,
 ) -> Status {
 	if !verify_token(&name, &auth.token) {
 		return Status::Forbidden;
 	}
-	let link = link.strip_suffix("/").unwrap_or(&link);
-	let gh = gh.strip_suffix("/").unwrap_or(&gh);
+	let link = repo.link.strip_suffix("/").unwrap_or(&repo.link);
+	let gh = repo.gh.strip_suffix("/").unwrap_or(&repo.gh);
 	let q = sqlx::query!("INSERT INTO repos(name, link, gh) VALUES ($1,$2,$3)", name, link, gh);
 	match q.execute(&mut *db).await {
 		Ok(res) => {
@@ -123,7 +137,7 @@ async fn add_repo(
 	}
 }
 
-#[get("/repos/del/<name>")]
+#[delete("/repos/del/<name>")]
 async fn del_repo(mut db: Connection<Mg>, name: String, auth: ApiAuth) -> Status {
 	if !verify_token(&name, &auth.token) {
 		return Status::Forbidden;

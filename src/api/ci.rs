@@ -14,18 +14,28 @@
 use super::auth::{verify_token, ApiAuth};
 use crate::db::{Build, Madoguchi as Mg};
 use rocket::http::Status;
-use rocket::{get, routes, Route};
+use rocket::serde::json::Json;
+use rocket::{put, routes, Route};
 use rocket_db_pools::Connection;
+use serde::Deserialize;
 use sqlx::types::chrono;
 
 pub(crate) fn routes() -> Vec<Route> {
 	routes![add_build]
 }
 
-#[get("/<repo>/add/builds/<name>?<verl>&<arch>&<dirs>&<id>")]
+#[derive(Deserialize)]
+struct AddBuildBody {
+	id: String,
+	verl: String,
+	arch: String,
+	dirs: Option<String>,
+}
+
+#[put("/<repo>/add/builds/<name>", data = "<build_body>")]
 async fn add_build(
-	mut db: Connection<Mg>, repo: String, name: String, verl: String, arch: String,
-	dirs: Option<String>, id: String, auth: ApiAuth,
+	mut db: Connection<Mg>, repo: String, name: String, build_body: Json<AddBuildBody>,
+	auth: ApiAuth,
 ) -> Status {
 	if !verify_token(&repo, &auth.token) {
 		return Status::Forbidden;
@@ -35,9 +45,9 @@ async fn add_build(
 		Build,
 		"INSERT INTO builds(pname,pverl,parch,id,repo,epoch) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *",
 		name,
-		verl,
-		arch,
-		id,
+		build_body.verl,
+		build_body.arch,
+		build_body.id,
 		repo,
 		ep
 	);
@@ -48,14 +58,14 @@ async fn add_build(
 			return Status::InternalServerError;
 		},
 	};
-	if let Some(d) = dirs {
+	if let Some(d) = build_body.dirs.clone() {
 		let d = d.trim_matches('/');
 		let q = sqlx::query!(
 			"INSERT INTO pkgs(name, repo, verl, arch, dirs, build) VALUES ($1,$2,$3,$4,$5,$6)",
 			name,
 			repo,
-			verl,
-			arch,
+			build_body.verl,
+			build_body.arch,
 			d,
 			build.id
 		);
