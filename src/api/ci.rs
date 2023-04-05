@@ -32,7 +32,7 @@ struct AddBuildBody {
 	dirs: Option<String>,
 }
 
-#[put("/<repo>/add/builds/<name>", data = "<build_body>")]
+#[put("/<repo>/builds/<name>", data = "<build_body>")]
 async fn add_build(
 	mut db: Connection<Mg>, repo: String, name: String, build_body: Json<AddBuildBody>,
 	auth: ApiAuth,

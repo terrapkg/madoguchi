@@ -36,7 +36,7 @@ struct AddPkgBody {
 	dirs: String,
 }
 
-#[put("/<repo>/add/packages/<name>", data = "<package>")]
+#[put("/<repo>/packages/<name>", data = "<package>")]
 async fn add_pkg(
 	mut db: Connection<Mg>, auth: ApiAuth, repo: String, name: String, package: Json<AddPkgBody>,
 ) -> Status {
@@ -78,7 +78,7 @@ async fn add_pkg(
 	}
 }
 
-#[delete("/<repo>/del/packages/<name>?<verl>&<arch>")]
+#[delete("/<repo>/packages/<name>?<verl>&<arch>")]
 async fn del_pkg(
 	mut db: Connection<Mg>, repo: String, name: String, verl: String, arch: String, auth: ApiAuth,
 ) -> Status {
@@ -105,7 +105,7 @@ struct AddRepoBody {
 	gh: String,
 }
 
-#[put("/repos/add/<name>", data = "<repo>")]
+#[put("/repos/<name>", data = "<repo>")]
 async fn add_repo(
 	mut db: Connection<Mg>, name: String, repo: Json<AddRepoBody>, auth: ApiAuth,
 ) -> Status {
@@ -137,7 +137,7 @@ async fn add_repo(
 	}
 }
 
-#[delete("/repos/del/<name>")]
+#[delete("/repos/<name>")]
 async fn del_repo(mut db: Connection<Mg>, name: String, auth: ApiAuth) -> Status {
 	if !verify_token(&name, &auth.token) {
 		return Status::Forbidden;
@@ -165,13 +165,13 @@ async fn del_repo(mut db: Connection<Mg>, name: String, auth: ApiAuth) -> Status
 	})
 }
 
-#[get("/repos/list")]
+#[get("/repos")]
 async fn list_repos(mut db: Connection<Mg>) -> rocket::serde::json::Value {
 	let q = qa::<_, Repo>("SELECT * FROM repos").fetch(&mut *db);
 	serde_json::json!(q.map(|x| { x.expect("Can't list repos?") }).collect::<Vec<Repo>>().await)
 }
 
-#[get("/<repo>/packages/list?<n>&<order>&<offset>")]
+#[get("/<repo>/packages?<n>&<order>&<offset>")]
 async fn list_pkgs(
 	mut db: Connection<Mg>, repo: String, n: Option<i64>, order: Option<String>,
 	offset: Option<i64>,
@@ -213,7 +213,7 @@ struct RepologyPkg {
 	arch: String,
 }
 
-#[get("/<repo>/packages/info")]
+#[get("/<repo>/packages")]
 async fn pkg_info(mut db: Connection<Mg>, repo: String) -> TextStream![String] {
 	TextStream! {
 		let r = match qa!(Repo, "SELECT * FROM repos WHERE name = $1", repo).fetch_one(&mut *db).await {
