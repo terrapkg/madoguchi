@@ -41,7 +41,7 @@ struct CustomClaims {
 	scopes: Vec<String>,
 }
 
-pub fn verify_token(repo: &str, token: &str) -> bool {
+pub fn verify_token(_repo: &str, token: &str) -> bool {
 	let options = VerificationOptions::default();
 	if let Ok(claims) = JWT_KEY.verify_token::<CustomClaims>(token, Some(options)) {
 		claims.custom.scopes.contains(&"admin".to_string())

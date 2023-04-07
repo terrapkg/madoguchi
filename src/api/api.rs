@@ -12,7 +12,6 @@
 /// If not, see <https://www.gnu.org/licenses/>.
 ///
 use super::auth::{verify_token, ApiAuth};
-use super::repopkgs::parse_primary_xml;
 use crate::db::{Madoguchi as Mg, Pkg, Repo};
 use rocket::futures::StreamExt;
 use rocket::http::Status;
@@ -44,7 +43,7 @@ async fn add_pkg(
 	if !verify_token(&repo, &auth.token) {
 		return Status::Forbidden;
 	}
-	let dirs = package.dirs.strip_suffix("/").unwrap_or(&package.dirs);
+	let dirs = package.dirs.strip_suffix('/').unwrap_or(&package.dirs);
 	let q = q!(
 		"INSERT INTO pkgs(name, repo, ver, rel, arch, dirs) VALUES ($1,$2,$3,$4,$5, $6)",
 		name,
@@ -81,7 +80,8 @@ async fn add_pkg(
 
 #[delete("/<repo>/packages/<name>?<ver>&<arch>&<rel>")]
 async fn del_pkg(
-	mut db: Connection<Mg>, repo: String, name: String, ver: String, arch: String, rel: String, auth: ApiAuth,
+	mut db: Connection<Mg>, repo: String, name: String, ver: String, arch: String, rel: String,
+	auth: ApiAuth,
 ) -> Status {
 	if !verify_token(&repo, &auth.token) {
 		return Status::Forbidden;
@@ -114,8 +114,8 @@ async fn add_repo(
 	if !verify_token(&name, &auth.token) {
 		return Status::Forbidden;
 	}
-	let link = repo.link.strip_suffix("/").unwrap_or(&repo.link);
-	let gh = repo.gh.strip_suffix("/").unwrap_or(&repo.gh);
+	let link = repo.link.strip_suffix('/').unwrap_or(&repo.link);
+	let gh = repo.gh.strip_suffix('/').unwrap_or(&repo.gh);
 	let q = q!("INSERT INTO repos(name, link, gh) VALUES ($1,$2,$3)", name, link, gh);
 	match q.execute(&mut *db).await {
 		Ok(res) => {
@@ -219,19 +219,20 @@ struct RepologyPkg {
 async fn list_pkgs(
 	mut db: Connection<Mg>, repo: String,
 ) -> Result<rocket::serde::json::Value, Status> {
-	let (url, gh) = match q!("SELECT link,gh FROM repos WHERE name = $1", repo).fetch_one(&mut *db).await {
-		Ok(r) => (r.link, r.gh),
-		Err(e) => {
-			if e.to_string()
-			== "no rows returned by a query that expected to return at least one row"
-			{
-				return Err(Status::NotFound);
-			} else {
-				tracing::error!("DB err: {}", e.to_string());
-				return Err(Status::BadRequest);
-			}
-		},
-	};
+	let (url, gh) =
+		match q!("SELECT link,gh FROM repos WHERE name = $1", repo).fetch_one(&mut *db).await {
+			Ok(r) => (r.link, r.gh),
+			Err(e) => {
+				if e.to_string()
+					== "no rows returned by a query that expected to return at least one row"
+				{
+					return Err(Status::NotFound);
+				} else {
+					tracing::error!("DB err: {}", e.to_string());
+					return Err(Status::BadRequest);
+				}
+			},
+		};
 	let fut = rocket::tokio::spawn(super::repopkgs::parse_primary_xml(url));
 	let mut pkgs = vec![];
 	let mut res = qa!(Pkg, "SELECT * FROM pkgs WHERE repo=$1", repo).fetch(&mut *db);
@@ -248,7 +249,12 @@ async fn list_pkgs(
 	let mut infs = fut.await.unwrap();
 	let mut rpkgs = vec![];
 	for (p, b) in pkgs.into_iter().zip(bids) {
-		let inf = infs.get_mut(&(p.name.to_owned(), p.ver.to_owned(), p.rel.to_owned(), p.arch.to_owned())); // unfortunate
+		let inf = infs.get_mut(&(
+			p.name.to_owned(),
+			p.ver.to_owned(),
+			p.rel.to_owned(),
+			p.arch.to_owned(),
+		)); // unfortunate
 		if inf.is_none() {
 			continue;
 		}
@@ -262,9 +268,9 @@ async fn list_pkgs(
 			build: b.map(|x| format!("https://github.com/terrapkg/packages/actions/runs/{x}")),
 			category: p.dirs.clone(), // fixme
 			license: std::mem::take(&mut inf.license),
-			maintainers: vec![],      // todo
+			maintainers: vec![], // todo
 			recipe: format!("{gh}/{}/anda.hcl", p.dirs),
-			summary: std::mem::take(&mut inf.summary)
+			summary: std::mem::take(&mut inf.summary),
 		});
 	}
 	Ok(serde_json::json!(rpkgs))

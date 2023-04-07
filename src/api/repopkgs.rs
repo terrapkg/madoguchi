@@ -12,19 +12,9 @@
 /// If not, see <https://www.gnu.org/licenses/>.
 ///
 use async_compression::futures::bufread::GzipDecoder;
-use rocket::{
-	futures::{
-		channel::mpsc::{Receiver, Sender},
-		io, AsyncRead, AsyncReadExt, SinkExt, StreamExt, TryStreamExt,
-	},
-	tokio::{runtime::Handle, task::block_in_place},
-};
+use rocket::futures::{io, AsyncReadExt, TryStreamExt};
 use serde::Deserialize;
-use std::{
-	collections::HashMap,
-	io::Write,
-};
-
+use std::collections::HashMap;
 
 #[derive(Deserialize)]
 struct PrimaryXML {

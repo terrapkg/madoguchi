@@ -44,7 +44,7 @@ async fn add_build(
 	}
 	if sqlx::query!("SELECT name FROM pkgs WHERE name=$1", name).fetch_one(&mut *db).await.is_err()
 	{
-		let q = sqlx::query!(
+		let _q = sqlx::query!(
 			"INSERT INTO pkgs(name, repo, ver, rel, arch, dirs) VALUES ($1,$2,$3,$4,$5,$6)",
 			name,
 			repo,
@@ -53,7 +53,8 @@ async fn add_build(
 			build_body.arch,
 			build_body.dirs.trim_matches('/'),
 		);
-	} else if build_body.succ { // don't want to update if it doesn't even build
+	} else if build_body.succ {
+		// don't want to update if it doesn't even build
 		sqlx::query!(
 			"UPDATE pkgs SET ver=$1,rel=$2,dirs=$3 WHERE name=$4 AND repo=$5 AND arch=$6",
 			build_body.ver,
