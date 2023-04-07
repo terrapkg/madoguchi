@@ -12,15 +12,15 @@
 /// If not, see <https://www.gnu.org/licenses/>.
 ///
 use super::auth::{verify_token, ApiAuth};
+use super::repopkgs::parse_primary_xml;
 use crate::db::{Madoguchi as Mg, Pkg, Repo};
 use rocket::futures::StreamExt;
 use rocket::http::Status;
-use rocket::response::stream::TextStream;
 use rocket::serde::json::Json;
 use rocket::{delete, get, put, routes, Route};
 use rocket_db_pools::Connection;
 use serde::{Deserialize, Serialize};
-use sqlx::query_as as qa;
+use sqlx::{query as q, query_as as qa};
 use tracing::error;
 
 const MAX_LIM: i64 = 100;
@@ -31,8 +31,8 @@ pub(crate) fn routes() -> Vec<Route> {
 
 #[derive(Deserialize)]
 struct AddPkgBody {
-	id: Option<String>,
-	verl: String,
+	ver: String,
+	rel: String,
 	arch: String,
 	dirs: String,
 }
@@ -45,14 +45,14 @@ async fn add_pkg(
 		return Status::Forbidden;
 	}
 	let dirs = package.dirs.strip_suffix("/").unwrap_or(&package.dirs);
-	let q = sqlx::query!(
-		"INSERT INTO pkgs(name, repo, verl, arch, dirs, build) VALUES ($1,$2,$3,$4,$5,$6)",
+	let q = q!(
+		"INSERT INTO pkgs(name, repo, ver, rel, arch, dirs) VALUES ($1,$2,$3,$4,$5, $6)",
 		name,
 		repo,
-		package.verl,
+		package.ver,
+		package.rel,
 		package.arch,
-		dirs,
-		package.id
+		dirs
 	);
 	match q.execute(&mut *db).await {
 		Ok(res) => {
@@ -79,19 +79,20 @@ async fn add_pkg(
 	}
 }
 
-#[delete("/<repo>/packages/<name>?<verl>&<arch>")]
+#[delete("/<repo>/packages/<name>?<ver>&<arch>&<rel>")]
 async fn del_pkg(
-	mut db: Connection<Mg>, repo: String, name: String, verl: String, arch: String, auth: ApiAuth,
+	mut db: Connection<Mg>, repo: String, name: String, ver: String, arch: String, rel: String, auth: ApiAuth,
 ) -> Status {
 	if !verify_token(&repo, &auth.token) {
 		return Status::Forbidden;
 	}
-	let q = sqlx::query!(
-		"DELETE FROM pkgs WHERE name=$1 AND repo=$2 AND verl=$3 AND arch=$4",
+	let q = q!(
+		"DELETE FROM pkgs WHERE name=$1 AND repo=$2 AND ver=$3 AND arch=$4 AND rel=$5",
 		name,
 		repo,
-		verl,
-		arch
+		ver,
+		arch,
+		rel,
 	);
 	if q.execute(&mut *db).await.map_or(false, |r| r.rows_affected() == 1) {
 		Status::NoContent
@@ -115,7 +116,7 @@ async fn add_repo(
 	}
 	let link = repo.link.strip_suffix("/").unwrap_or(&repo.link);
 	let gh = repo.gh.strip_suffix("/").unwrap_or(&repo.gh);
-	let q = sqlx::query!("INSERT INTO repos(name, link, gh) VALUES ($1,$2,$3)", name, link, gh);
+	let q = q!("INSERT INTO repos(name, link, gh) VALUES ($1,$2,$3)", name, link, gh);
 	match q.execute(&mut *db).await {
 		Ok(res) => {
 			if res.rows_affected() != 1 {
@@ -145,15 +146,15 @@ async fn del_repo(mut db: Connection<Mg>, name: String, auth: ApiAuth) -> Status
 	}
 	// the main point is to delete from the `repos` table, so we ignore errors
 	// we erase repo refs in pkgs and builds due to the "REFERENCES" (repo is fk)
-	let q = sqlx::query!("DELETE FROM pkgs WHERE repo = $1", name);
+	let q = q!("DELETE FROM pkgs WHERE repo = $1", name);
 	if let Err(e) = q.execute(&mut *db).await {
 		error!("DEL REPO {name} pkgs FAIL: {e:#?}");
 	}
-	let q = sqlx::query!("DELETE FROM builds WHERE repo = $1", name);
+	let q = q!("DELETE FROM builds WHERE repo = $1", name);
 	if let Err(e) = q.execute(&mut *db).await {
 		eprintln!("DEL REPO {name} builds FAIL: {e:#?}");
 	}
-	let q = sqlx::query!("DELETE FROM repos WHERE name = $1", name);
+	let q = q!("DELETE FROM repos WHERE name = $1", name);
 	q.execute(&mut *db).await.map_or(Status::InternalServerError, |r| {
 		if r.rows_affected() == 1 {
 			Status::NoContent
@@ -203,61 +204,70 @@ async fn search_pkgs(
 struct RepologyPkg {
 	name: String,
 	version: String,
+	release: String,
 	url: String,
 	recipe: String,
 	maintainers: Vec<String>,
 	summary: String,
-	license: Option<String>,
+	license: String,
 	category: String,
-	rpms: Vec<String>,
 	build: Option<String>,
 	arch: String,
 }
 
 #[get("/<repo>/packages-all")]
-async fn list_pkgs(mut db: Connection<Mg>, repo: String) -> (Status, Option<TextStream![String]>) {
-	let r = match qa!(Repo, "SELECT * FROM repos WHERE name = $1", repo).fetch_one(&mut *db).await {
-		Ok(r) => r,
+async fn list_pkgs(
+	mut db: Connection<Mg>, repo: String,
+) -> Result<rocket::serde::json::Value, Status> {
+	let (url, gh) = match q!("SELECT link,gh FROM repos WHERE name = $1", repo).fetch_one(&mut *db).await {
+		Ok(r) => (r.link, r.gh),
 		Err(e) => {
 			if e.to_string()
-				== "no rows returned by a query that expected to return at least one row"
+			== "no rows returned by a query that expected to return at least one row"
 			{
-				return (Status::NotFound, None);
+				return Err(Status::NotFound);
 			} else {
 				tracing::error!("DB err: {}", e.to_string());
-				return (Status::BadRequest, None);
+				return Err(Status::BadRequest);
 			}
 		},
 	};
-	(
-		Status::Ok,
-		Some(TextStream! {
-			let mut res = qa!(Pkg, "SELECT * FROM pkgs WHERE repo=$1", repo).fetch(&mut *db);
-			yield "[".into();
-			let first = true;
-			while let Some(item) = res.next().await {
-				if !first {
-					yield ",".into();
-				}
-				if let Ok(pkg) = item {
-					yield serde_json::json!( RepologyPkg {
-						name: pkg.name,
-						version: pkg.verl,
-						url: format!("{}/{}", r.gh, pkg.dirs.clone()),
-						arch: pkg.arch,
-						build: pkg.build.map(|b| format!("https://github.com/terrapkg/packages/actions/runs/{}", b)),
-						category: pkg.dirs.clone(),
-						license: None, // todo
-						maintainers: vec![], // todo
-						recipe: format!("{}/{}/anda.hcl", r.gh, pkg.dirs.clone()),
-						rpms: vec![], // todo
-						summary: "".into() // todo
-					}).to_string();
-				}
-				yield "]".into();
-			}
-		}),
-	)
+	let fut = rocket::tokio::spawn(super::repopkgs::parse_primary_xml(url));
+	let mut pkgs = vec![];
+	let mut res = qa!(Pkg, "SELECT * FROM pkgs WHERE repo=$1", repo).fetch(&mut *db);
+	while let Some(item) = res.next().await {
+		if let Ok(pkg) = item {
+			pkgs.push(pkg);
+		}
+	}
+	drop(res); // need to mutably borrow db later
+	let mut bids = vec![];
+	for p in &pkgs {
+		bids.push(q!("SELECT id FROM builds WHERE pname=$1 AND pver=$2 AND parch=$3 AND repo=$4 AND succ=true AND prel=$5", p.name, p.ver, p.arch, repo, p.rel).fetch_one(&mut *db).await.ok().map(|x| x.id));
+	}
+	let mut infs = fut.await.unwrap();
+	let mut rpkgs = vec![];
+	for (p, b) in pkgs.into_iter().zip(bids) {
+		let inf = infs.get_mut(&(p.name.to_owned(), p.ver.to_owned(), p.rel.to_owned(), p.arch.to_owned())); // unfortunate
+		if inf.is_none() {
+			continue;
+		}
+		let inf = inf.unwrap();
+		rpkgs.push(RepologyPkg {
+			name: p.name,
+			version: p.ver,
+			release: p.rel,
+			url: format!("{gh}/{}", p.dirs),
+			arch: p.arch,
+			build: b.map(|x| format!("https://github.com/terrapkg/packages/actions/runs/{x}")),
+			category: p.dirs.clone(), // fixme
+			license: std::mem::take(&mut inf.license),
+			maintainers: vec![],      // todo
+			recipe: format!("{gh}/{}/anda.hcl", p.dirs),
+			summary: std::mem::take(&mut inf.summary)
+		});
+	}
+	Ok(serde_json::json!(rpkgs))
 }
 
 #[get("/<repo>/packages/<name>")]

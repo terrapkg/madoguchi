@@ -23,7 +23,7 @@ pub(crate) fn routes() -> Vec<Route> {
 #[get("/<repo>/packages/<name>")]
 async fn redirect_pkg(mut db: Connection<Mg>, repo: String, name: String) -> Option<Redirect> {
 	let dirs = sqlx::query!(
-		"SELECT dirs FROM pkgs WHERE name = $1 AND repo = $2 ORDER BY verl DESC",
+		"SELECT dirs FROM pkgs WHERE name = $1 AND repo = $2 ORDER BY ver DESC",
 		name,
 		repo
 	);
@@ -35,7 +35,7 @@ async fn redirect_pkg(mut db: Connection<Mg>, repo: String, name: String) -> Opt
 #[get("/<repo>/packages/<name>/recipe")]
 async fn redirect_andahcl(mut db: Connection<Mg>, repo: String, name: String) -> Option<Redirect> {
 	let dirs = sqlx::query!(
-		"SELECT dirs FROM pkgs WHERE name = $1 AND repo = $2 ORDER BY verl DESC",
+		"SELECT dirs FROM pkgs WHERE name = $1 AND repo = $2 ORDER BY ver DESC",
 		name,
 		repo
 	);

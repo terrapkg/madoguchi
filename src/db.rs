@@ -29,10 +29,10 @@ pub struct Repo {
 pub struct Pkg {
 	pub name: String,
 	pub repo: String,
-	pub verl: String,
+	pub ver: String,
+	pub rel: String,
 	pub arch: String,
 	pub dirs: String,
-	pub build: Option<String>,
 }
 
 #[derive(sqlx::FromRow)]
@@ -40,7 +40,9 @@ pub struct Build {
 	pub id: String,
 	pub epoch: sqlx::types::chrono::NaiveDateTime,
 	pub pname: String,
-	pub pverl: String,
+	pub pver: String,
+	pub prel: String,
 	pub parch: String,
 	pub repo: String,
+	pub succ: bool,
 }

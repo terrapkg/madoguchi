@@ -12,7 +12,7 @@
 /// If not, see <https://www.gnu.org/licenses/>.
 ///
 use super::auth::{verify_token, ApiAuth};
-use crate::db::{Build, Madoguchi as Mg};
+use crate::db::Madoguchi as Mg;
 use rocket::http::Status;
 use rocket::serde::json::Json;
 use rocket::{put, routes, Route};
@@ -27,9 +27,11 @@ pub(crate) fn routes() -> Vec<Route> {
 #[derive(Deserialize)]
 struct AddBuildBody {
 	id: String,
-	verl: String,
+	ver: String,
+	rel: String,
 	arch: String,
-	dirs: Option<String>,
+	dirs: String,
+	succ: bool,
 }
 
 #[put("/<repo>/builds/<name>", data = "<build_body>")]
@@ -40,36 +42,49 @@ async fn add_build(
 	if !verify_token(&repo, &auth.token) {
 		return Status::Forbidden;
 	}
+	if sqlx::query!("SELECT name FROM pkgs WHERE name=$1", name).fetch_one(&mut *db).await.is_err()
+	{
+		let q = sqlx::query!(
+			"INSERT INTO pkgs(name, repo, ver, rel, arch, dirs) VALUES ($1,$2,$3,$4,$5,$6)",
+			name,
+			repo,
+			build_body.ver,
+			build_body.rel,
+			build_body.arch,
+			build_body.dirs.trim_matches('/'),
+		);
+	} else if build_body.succ { // don't want to update if it doesn't even build
+		sqlx::query!(
+			"UPDATE pkgs SET ver=$1,rel=$2,dirs=$3 WHERE name=$4 AND repo=$5 AND arch=$6",
+			build_body.ver,
+			build_body.rel,
+			build_body.dirs.trim_matches('/'),
+			name,
+			repo,
+			build_body.arch,
+		)
+		.execute(&mut *db)
+		.await
+		.expect("Cannot Update pkgs in builds");
+	}
 	let ep = chrono::Utc::now().naive_utc();
 	let q = sqlx::query_as!(
 		Build,
-		"INSERT INTO builds(pname,pverl,parch,id,repo,epoch) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *",
+		"INSERT INTO builds(pname,pver,prel,parch,id,repo,epoch,succ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
 		name,
-		build_body.verl,
+		build_body.ver,
+		build_body.rel,
 		build_body.arch,
 		build_body.id,
 		repo,
-		ep
+		ep,
+		build_body.succ,
 	);
-	let build = match q.fetch_one(&mut *db).await {
-		Ok(r) => r,
+	match q.fetch_one(&mut *db).await {
+		Ok(_) => Status::Created,
 		Err(e) => {
 			eprintln!("{e:?}");
-			return Status::InternalServerError;
+			Status::InternalServerError
 		},
-	};
-	if let Some(d) = build_body.dirs.clone() {
-		let d = d.trim_matches('/');
-		let q = sqlx::query!(
-			"INSERT INTO pkgs(name, repo, verl, arch, dirs, build) VALUES ($1,$2,$3,$4,$5,$6)",
-			name,
-			repo,
-			build_body.verl,
-			build_body.arch,
-			d,
-			build.id
-		);
-		assert_eq!(q.execute(&mut *db).await.expect("Failed to insert new pkg").rows_affected(), 1);
 	}
-	Status::Created
 }
