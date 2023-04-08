@@ -15,7 +15,6 @@
 //
 mod api;
 mod db;
-use opentelemetry_sdk::{trace::config, Resource};
 use rocket::*;
 use rocket_db_pools::Database;
 use tracing::{error, info, instrument::WithSubscriber};
@@ -51,17 +50,15 @@ async fn migrate(rocket: Rocket<Build>) -> fairing::Result {
 #[launch]
 async fn rocket() -> _ {
 	dotenv::dotenv().ok();
-	opentelemetry::global::set_text_map_propagator(opentelemetry_jaeger::Propagator::new());
-	let tracer = opentelemetry_jaeger::new_agent_pipeline()
-		.with_endpoint("localhost:3200")
-		.with_service_name("madoguchi")
-		.with_max_packet_size(9216)
-		.with_auto_split_batch(true)
-		.install_batch(opentelemetry::runtime::Tokio)
-		.expect("Cannot build/install tracer");
-	let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
+	// opentelemetry::global::set_text_map_propagator(opentelemetry_zipkin::Propagator::new());
+	// let tracer = opentelemetry_zipkin::new_pipeline()
+	// 	.with_collector_endpoint("localhost:9411")
+	// 	.with_service_name("madoguchi")
+	// 	.install_batch(opentelemetry::runtime::Tokio)
+	// 	.expect("Cannot build/install tracer");
+	// let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
 	Registry::default()
-		.with(telemetry)
+		// .with(telemetry)
 		.with(EnvFilter::from_default_env())
 		.with(tracing_logfmt::layer())
 		.init();
