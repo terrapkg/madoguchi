@@ -18,8 +18,8 @@ mod db;
 use opentelemetry_sdk::{trace::config, Resource};
 use rocket::*;
 use rocket_db_pools::Database;
-use tracing::{error, info};
-use tracing_subscriber::{fmt, prelude::*, EnvFilter};
+use tracing::{error, info, instrument::WithSubscriber};
+use tracing_subscriber::{fmt, prelude::*, EnvFilter, Registry};
 
 #[get("/")]
 async fn index() -> response::Redirect {
@@ -28,7 +28,7 @@ async fn index() -> response::Redirect {
 
 #[get("/health")]
 async fn health() -> &'static str {
-	"."
+	env!("CARGO_PKG_VERSION")
 }
 
 fn chks() {
@@ -51,20 +51,30 @@ async fn migrate(rocket: Rocket<Build>) -> fairing::Result {
 #[launch]
 async fn rocket() -> _ {
 	dotenv::dotenv().ok();
-	let tracer = opentelemetry_sdk::export::trace::stdout::new_pipeline()
-		.with_pretty_print(true)
-		.with_trace_config(config().with_resource(Resource::empty()))
-		.install_simple();
+	opentelemetry::global::set_text_map_propagator(opentelemetry_jaeger::Propagator::new());
+	let tracer = opentelemetry_jaeger::new_agent_pipeline()
+		.with_endpoint("localhost:3200")
+		.with_service_name("madoguchi")
+		.with_max_packet_size(9216)
+		.with_auto_split_batch(true)
+		.install_batch(opentelemetry::runtime::Tokio)
+		.expect("Cannot build/install tracer");
 	let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
-	let file = std::fs::File::create("mg.log").unwrap_or_else(|e| panic!("Can't make log: {e:?}"));
-	let flog = tracing_subscriber::fmt::layer().with_writer(std::sync::Arc::new(file));
-	let sub = fmt().compact().without_time().finish();
-	sub.with(telemetry).with(EnvFilter::from_default_env()).with(flog).init();
+	Registry::default()
+		.with(telemetry)
+		.with(EnvFilter::from_default_env())
+		.with(tracing_logfmt::layer())
+		.init();
 	chks();
 	info!("Launching rocket 🚀");
 	rocket::build()
 		.attach(db::Madoguchi::init())
 		.attach(rocket::fairing::AdHoc::try_on_ignite("Migrations", migrate))
+		.attach(rocket::fairing::AdHoc::on_shutdown("OpenTelemetry", |_| {
+			Box::pin(async move {
+				opentelemetry::global::shutdown_tracer_provider();
+			})
+		}))
 		.mount("/", routes![index, health])
 		.mount("/redirect", api::repology::routes())
 		.mount("/ci", api::ci::routes())
