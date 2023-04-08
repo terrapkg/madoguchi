@@ -28,8 +28,8 @@ async fn redirect_pkg(mut db: Connection<Mg>, repo: String, name: String) -> Opt
 		repo
 	);
 	let dirs = dirs.fetch_one(&mut *db).await.ok()?.dirs;
-	let link = sqlx::query!("SELECT link FROM repos WHERE name = $1", name);
-	let link = link.fetch_one(&mut *db).await.ok()?.link;
+	let link = sqlx::query!("SELECT gh FROM repos WHERE name = $1", repo);
+	let link = link.fetch_one(&mut *db).await.ok()?.gh;
 	Some(Redirect::to(format!("{link}/{dirs}")))
 }
 #[get("/<repo>/packages/<name>/recipe")]
@@ -40,7 +40,7 @@ async fn redirect_andahcl(mut db: Connection<Mg>, repo: String, name: String) ->
 		repo
 	);
 	let dirs = dirs.fetch_one(&mut *db).await.ok()?.dirs;
-	let link = sqlx::query!("SELECT link FROM repos WHERE name = $1", name);
-	let link = link.fetch_one(&mut *db).await.ok()?.link;
+	let link = sqlx::query!("SELECT gh FROM repos WHERE name = $1", repo);
+	let link = link.fetch_one(&mut *db).await.ok()?.gh;
 	Some(Redirect::to(format!("{link}/{dirs}/anda.hcl")))
 }
