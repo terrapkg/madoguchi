@@ -15,10 +15,11 @@
 //
 mod api;
 mod db;
+use opentelemetry_sdk::{trace::config, Resource};
 use rocket::*;
 use rocket_db_pools::Database;
 use tracing::{error, info};
-use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
 #[get("/")]
 async fn index() -> response::Redirect {
@@ -49,14 +50,16 @@ async fn migrate(rocket: Rocket<Build>) -> fairing::Result {
 
 #[launch]
 async fn rocket() -> _ {
+	dotenv::dotenv().ok();
 	let tracer = opentelemetry_sdk::export::trace::stdout::new_pipeline()
 		.with_pretty_print(true)
+		.with_trace_config(config().with_resource(Resource::empty()))
 		.install_simple();
 	let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
-	let sub = tracing_subscriber::fmt().compact().without_time().finish().with(telemetry);
-	tracing::subscriber::set_global_default(sub).expect("Cannot set default tracing subscriber");
-	tracing_log::LogTracer::init().expect("Cannot init tracing_log");
-	dotenv::dotenv().ok();
+	let file = std::fs::File::create("mg.log").unwrap_or_else(|e| panic!("Can't make log: {e:?}"));
+	let flog = tracing_subscriber::fmt::layer().with_writer(std::sync::Arc::new(file));
+	let sub = fmt().compact().without_time().finish();
+	sub.with(telemetry).with(EnvFilter::from_default_env()).with(flog).init();
 	chks();
 	info!("Launching rocket 🚀");
 	rocket::build()
@@ -65,5 +68,6 @@ async fn rocket() -> _ {
 		.mount("/", routes![index, health])
 		.mount("/redirect", api::repology::routes())
 		.mount("/ci", api::ci::routes())
-		.mount("/api", api::api::routes())
+		.mount("/api", api::v4::routes())
+		.mount("/v4", api::v4::routes())
 }

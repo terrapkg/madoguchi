@@ -12,7 +12,7 @@
 /// If not, see <https://www.gnu.org/licenses/>.
 ///
 use super::auth::{verify_token, ApiAuth};
-use crate::db::{Madoguchi as Mg, Pkg, Repo};
+use crate::db::{Build, Madoguchi as Mg, Pkg, Repo};
 use rocket::futures::StreamExt;
 use rocket::http::Status;
 use rocket::serde::json::Json;
@@ -20,12 +20,22 @@ use rocket::{delete, get, put, routes, Route};
 use rocket_db_pools::Connection;
 use serde::{Deserialize, Serialize};
 use sqlx::{query as q, query_as as qa};
-use tracing::error;
+use tracing::{error, info, instrument, trace, warn};
 
 const MAX_LIM: i64 = 100;
 
 pub(crate) fn routes() -> Vec<Route> {
-	routes![add_pkg, del_pkg, add_repo, del_repo, list_pkgs, list_repos, search_pkgs, pkg_info]
+	routes![
+		add_pkg,
+		del_pkg,
+		add_repo,
+		del_repo,
+		list_pkgs,
+		list_repos,
+		search_pkgs,
+		pkg_info,
+		list_builds
+	]
 }
 
 #[derive(Deserialize)]
@@ -207,7 +217,7 @@ struct RepologyPkg {
 	release: String,
 	url: String,
 	recipe: String,
-	maintainers: Vec<String>,
+	// maintainers: Vec<String>,
 	summary: String,
 	license: String,
 	category: String,
@@ -215,6 +225,7 @@ struct RepologyPkg {
 	arch: String,
 }
 
+#[instrument(skip(db))]
 #[get("/<repo>/packages-all")]
 async fn list_pkgs(
 	mut db: Connection<Mg>, repo: String,
@@ -228,37 +239,48 @@ async fn list_pkgs(
 				{
 					return Err(Status::NotFound);
 				} else {
-					tracing::error!("DB err: {}", e.to_string());
+					error!("DB err: {}", e.to_string());
 					return Err(Status::BadRequest);
 				}
 			},
 		};
+	trace!(url, gh, "repo exists");
 	let fut = rocket::tokio::spawn(super::repopkgs::parse_primary_xml(url));
 	let mut pkgs = vec![];
 	let mut res = qa!(Pkg, "SELECT * FROM pkgs WHERE repo=$1", repo).fetch(&mut *db);
 	while let Some(item) = res.next().await {
-		if let Ok(pkg) = item {
-			pkgs.push(pkg);
+		match item {
+			Ok(p) => pkgs.push(p),
+			Err(e) => warn!(?e, "while sel pkgs"),
 		}
 	}
 	drop(res); // need to mutably borrow db later
+	info!("Found {} packages.", pkgs.len());
+	trace!(?pkgs);
 	let mut bids = vec![];
 	for p in &pkgs {
 		bids.push(q!("SELECT id FROM builds WHERE pname=$1 AND pver=$2 AND parch=$3 AND repo=$4 AND succ=true AND prel=$5", p.name, p.ver, p.arch, repo, p.rel).fetch_one(&mut *db).await.ok().map(|x| x.id));
 	}
-	let mut infs = fut.await.unwrap();
+	trace!(?bids);
+	let mut infs = match fut.await.unwrap() {
+		Some(x) => x,
+		None => {
+			error!("packages-all basically died");
+			return Err(Status::InternalServerError);
+		},
+	};
+	trace!(?infs);
 	let mut rpkgs = vec![];
 	for (p, b) in pkgs.into_iter().zip(bids) {
-		let inf = infs.get_mut(&(
+		let inf = match infs.remove(&(
 			p.name.to_owned(),
 			p.ver.to_owned(),
 			p.rel.to_owned(),
 			p.arch.to_owned(),
-		)); // unfortunate
-		if inf.is_none() {
-			continue;
-		}
-		let inf = inf.unwrap();
+		)) {
+			Some(i) => i,
+			None => continue,
+		};
 		rpkgs.push(RepologyPkg {
 			name: p.name,
 			version: p.ver,
@@ -267,10 +289,10 @@ async fn list_pkgs(
 			arch: p.arch,
 			build: b.map(|x| format!("https://github.com/terrapkg/packages/actions/runs/{x}")),
 			category: p.dirs.clone(), // fixme
-			license: std::mem::take(&mut inf.license),
-			maintainers: vec![], // todo
+			license: inf.license,
+			// maintainers: vec![], // todo
 			recipe: format!("{gh}/{}/anda.hcl", p.dirs),
-			summary: std::mem::take(&mut inf.summary),
+			summary: inf.summary,
 		});
 	}
 	Ok(serde_json::json!(rpkgs))
@@ -285,6 +307,18 @@ async fn pkg_info(
 		.await;
 	if let Ok(res) = res {
 		Ok(serde_json::json!(res))
+	} else {
+		Err(Status::NotFound)
+	}
+}
+
+#[get("/<repo>/builds/<pkg>")]
+async fn list_builds(
+	mut db: Connection<Mg>, repo: String, pkg: String,
+) -> Result<rocket::serde::json::Value, Status> {
+	let res = qa!(Build, "SELECT * FROM builds WHERE repo=$1 AND pname=$2", repo, pkg);
+	if let Ok(builds) = res.fetch_all(&mut *db).await {
+		Ok(serde_json::json!(builds))
 	} else {
 		Err(Status::NotFound)
 	}

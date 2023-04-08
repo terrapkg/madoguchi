@@ -15,15 +15,11 @@ use async_compression::futures::bufread::GzipDecoder;
 use rocket::futures::{io, AsyncReadExt, TryStreamExt};
 use serde::Deserialize;
 use std::collections::HashMap;
+use tracing::{debug, error, instrument};
 
 #[derive(Deserialize)]
 struct PrimaryXML {
-	metadata: XMLMetadata,
-}
-
-#[derive(Deserialize)]
-struct XMLMetadata {
-	#[serde(default)]
+	#[serde(rename = "package")]
 	packages: Vec<XMLPackage>,
 }
 #[derive(Deserialize)]
@@ -45,30 +41,74 @@ struct XMLVer {
 }
 #[derive(Deserialize)]
 struct XMLFormat {
-	#[serde(rename = "rpm:license")]
+	// #[serde(rename = "rpm:license")]
 	license: String,
 }
+#[derive(Debug)]
 pub struct PkgInf {
 	pub summary: String,
 	pub license: String,
 }
-pub async fn parse_primary_xml(url: String) -> HashMap<(String, String, String, String), PkgInf> {
-	let response = reqwest::get(url).await.unwrap();
+#[instrument]
+pub async fn parse_primary_xml(
+	url: String,
+) -> Option<HashMap<(String, String, String, String), PkgInf>> {
+	let mut primaryurl = String::new();
+	debug!("Grabbing repomd.xml");
+	match reqwest::get(format!("{url}/repodata/repomd.xml")).await {
+		Ok(resp) => {
+			for line in resp.text().await.unwrap().lines() {
+				if line.ends_with(r#"-primary.xml.gz"/>"#) {
+					primaryurl = line
+						.trim_start()
+						.strip_prefix("<location href=\"")
+						.unwrap()
+						.strip_suffix("\"/>")
+						.unwrap()
+						.to_string();
+					break;
+				}
+			}
+			if primaryurl.is_empty() {
+				error!("Cannot parse repomd");
+				return None;
+			}
+			primaryurl = format!("{url}/{primaryurl}").to_string();
+		},
+		Err(_) => {
+			error!("Cannot fetch repomd");
+			return None;
+		},
+	};
+	debug!(primaryurl, "Grabbing primary");
+	let response = reqwest::get(primaryurl).await.unwrap();
 	let reader = response
 		.bytes_stream()
 		.map_err(|e| io::Error::new(io::ErrorKind::Other, e))
 		.into_async_read();
-	let br = rocket::futures::io::BufReader::new(reader);
+	let br = io::BufReader::new(reader);
 	let mut decoder = GzipDecoder::new(br);
 	let mut buf = "".into();
-	decoder.read_to_string(&mut buf).await.unwrap();
-	let xml: PrimaryXML = quick_xml::de::from_str(&buf).unwrap();
+	decoder.multiple_members(true);
+	if let Err(e) = decoder.read_to_string(&mut buf).await {
+		error!(?e, "while reading compressed data to string");
+		return None;
+	}
+	debug!(buf);
+	let xml: PrimaryXML = match quick_xml::de::from_str(&buf) {
+		Ok(o) => o,
+		Err(e) => {
+			error!(?e);
+			return None;
+		},
+	};
 	let mut pkgs: HashMap<(String, String, String, String), PkgInf> = HashMap::new(); // (name, ver, rel, arch)
-	for pkg in xml.metadata.packages {
+	for pkg in xml.packages {
 		pkgs.insert(
 			(pkg.name, pkg.version.ver, pkg.version.rel, pkg.arch),
 			PkgInf { summary: pkg.summary, license: pkg.format.license },
 		);
 	}
-	pkgs
+	tracing::trace!(?pkgs);
+	Some(pkgs)
 }

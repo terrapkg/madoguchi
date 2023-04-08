@@ -25,7 +25,7 @@ pub struct Repo {
 	pub gh: String,
 }
 
-#[derive(sqlx::FromRow, Serialize)]
+#[derive(sqlx::FromRow, Serialize, Debug)]
 pub struct Pkg {
 	pub name: String,
 	pub repo: String,
@@ -35,14 +35,14 @@ pub struct Pkg {
 	pub dirs: String,
 }
 
-#[derive(sqlx::FromRow)]
+#[derive(sqlx::FromRow, Serialize)]
 pub struct Build {
 	pub id: String,
-	pub epoch: sqlx::types::chrono::NaiveDateTime,
+	pub epoch: chrono::NaiveDateTime,
 	pub pname: String,
 	pub pver: String,
 	pub prel: String,
 	pub parch: String,
 	pub repo: String,
-	pub succ: bool,
+	pub succ: Option<bool>,
 }
