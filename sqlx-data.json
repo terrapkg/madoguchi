@@ -299,6 +299,26 @@
     },
     "query": "DELETE FROM repos WHERE name = $1"
   },
+  "a94fbc7f6195e4168dbe27ab36949f2d0b4444e8e5e43df02eb84e193f087563": {
+    "describe": {
+      "columns": [
+        {
+          "name": "gh",
+          "ordinal": 0,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT gh FROM repos WHERE name = $1"
+  },
   "b93c40e24a5add5cc7a4b9c4f599577c641b8c5cefb4674f01fc88b7ff2f1538": {
     "describe": {
       "columns": [],
@@ -443,25 +463,5 @@
       }
     },
     "query": "SELECT * FROM pkgs WHERE repo=$1 AND name=$2"
-  },
-  "ff8fb78d6c7e0c461748b00b307d5e6596adc01add7eac621be6d68000f0e821": {
-    "describe": {
-      "columns": [
-        {
-          "name": "link",
-          "ordinal": 0,
-          "type_info": "Varchar"
-        }
-      ],
-      "nullable": [
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Text"
-        ]
-      }
-    },
-    "query": "SELECT link FROM repos WHERE name = $1"
   }
 }
