@@ -50,10 +50,7 @@ async fn migrate(rocket: Rocket<Build>) -> fairing::Result {
 #[launch]
 async fn rocket() -> _ {
 	dotenv::dotenv().ok();
-	Registry::default()
-		.with(EnvFilter::from_default_env())
-		.with(tracing_logfmt::layer())
-		.init();
+	Registry::default().with(EnvFilter::from_default_env()).with(tracing_logfmt::layer()).init();
 	chks();
 	info!("Launching rocket 🚀");
 	rocket::build()
