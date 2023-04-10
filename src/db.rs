@@ -44,5 +44,5 @@ pub struct Build {
 	pub prel: String,
 	pub parch: String,
 	pub repo: String,
-	pub succ: Option<bool>,
+	pub succ: bool,
 }

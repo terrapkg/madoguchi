@@ -17,8 +17,8 @@ mod api;
 mod db;
 use rocket::*;
 use rocket_db_pools::Database;
-use tracing::{error, info, instrument::WithSubscriber};
-use tracing_subscriber::{fmt, prelude::*, EnvFilter, Registry};
+use tracing::{error, info};
+use tracing_subscriber::{prelude::*, EnvFilter, Registry};
 
 #[get("/")]
 async fn index() -> response::Redirect {
@@ -50,15 +50,7 @@ async fn migrate(rocket: Rocket<Build>) -> fairing::Result {
 #[launch]
 async fn rocket() -> _ {
 	dotenv::dotenv().ok();
-	// opentelemetry::global::set_text_map_propagator(opentelemetry_zipkin::Propagator::new());
-	// let tracer = opentelemetry_zipkin::new_pipeline()
-	// 	.with_collector_endpoint("localhost:9411")
-	// 	.with_service_name("madoguchi")
-	// 	.install_batch(opentelemetry::runtime::Tokio)
-	// 	.expect("Cannot build/install tracer");
-	// let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
 	Registry::default()
-		// .with(telemetry)
 		.with(EnvFilter::from_default_env())
 		.with(tracing_logfmt::layer())
 		.init();

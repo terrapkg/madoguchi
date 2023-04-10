@@ -24,7 +24,7 @@ pub(crate) fn routes() -> Vec<Route> {
 	routes![add_build]
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct AddBuildBody {
 	id: String,
 	ver: String,
@@ -42,9 +42,17 @@ async fn add_build(
 	if !verify_token(&repo, &auth.token) {
 		return Status::Forbidden;
 	}
-	if sqlx::query!("SELECT name FROM pkgs WHERE name=$1", name).fetch_one(&mut *db).await.is_err()
+	if sqlx::query!(
+		"SELECT name FROM pkgs WHERE name=$1 AND repo=$2 AND arch=$3",
+		name,
+		repo,
+		build_body.arch
+	)
+	.fetch_one(&mut *db)
+	.await
+	.is_err()
 	{
-		let _q = sqlx::query!(
+		if let Err(err) = sqlx::query!(
 			"INSERT INTO pkgs(name, repo, ver, rel, arch, dirs) VALUES ($1,$2,$3,$4,$5,$6)",
 			name,
 			repo,
@@ -52,10 +60,16 @@ async fn add_build(
 			build_body.rel,
 			build_body.arch,
 			build_body.dirs.trim_matches('/'),
-		);
+		)
+		.execute(&mut *db)
+		.await
+		{
+			tracing::error!(?build_body, repo, name, ?err, "Cannot add pkgs");
+			return Status::InternalServerError;
+		}
 	} else if build_body.succ {
 		// don't want to update if it doesn't even build
-		sqlx::query!(
+		if let Err(err) = sqlx::query!(
 			"UPDATE pkgs SET ver=$1,rel=$2,dirs=$3 WHERE name=$4 AND repo=$5 AND arch=$6",
 			build_body.ver,
 			build_body.rel,
@@ -66,7 +80,10 @@ async fn add_build(
 		)
 		.execute(&mut *db)
 		.await
-		.expect("Cannot Update pkgs in builds");
+		{
+			tracing::error!(?build_body, repo, name, ?err, "Cannot update pkgs");
+			return Status::InternalServerError;
+		}
 	}
 	let ep = chrono::Utc::now().naive_utc();
 	let q = sqlx::query_as!(
@@ -81,7 +98,7 @@ async fn add_build(
 		ep,
 		build_body.succ,
 	);
-	match q.fetch_one(&mut *db).await {
+	match q.execute(&mut *db).await {
 		Ok(_) => Status::Created,
 		Err(e) => {
 			eprintln!("{e:?}");
