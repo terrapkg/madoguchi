@@ -92,42 +92,42 @@
     "describe": {
       "columns": [
         {
-          "name": "id",
-          "ordinal": 0,
-          "type_info": "Varchar"
-        },
-        {
           "name": "epoch",
-          "ordinal": 1,
+          "ordinal": 0,
           "type_info": "Timestamp"
         },
         {
           "name": "pname",
-          "ordinal": 2,
+          "ordinal": 1,
           "type_info": "Varchar"
         },
         {
           "name": "parch",
-          "ordinal": 3,
+          "ordinal": 2,
           "type_info": "Varchar"
         },
         {
           "name": "repo",
-          "ordinal": 4,
+          "ordinal": 3,
           "type_info": "Varchar"
         },
         {
           "name": "succ",
-          "ordinal": 5,
+          "ordinal": 4,
           "type_info": "Bool"
         },
         {
           "name": "pver",
-          "ordinal": 6,
+          "ordinal": 5,
           "type_info": "Varchar"
         },
         {
           "name": "prel",
+          "ordinal": 6,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "id",
           "ordinal": 7,
           "type_info": "Varchar"
         }
