@@ -56,11 +56,11 @@ async fn rocket() -> _ {
 	rocket::build()
 		.attach(db::Madoguchi::init())
 		.attach(rocket::fairing::AdHoc::try_on_ignite("Migrations", migrate))
-		.attach(rocket::fairing::AdHoc::on_shutdown("OpenTelemetry", |_| {
-			Box::pin(async move {
-				opentelemetry::global::shutdown_tracer_provider();
-			})
-		}))
+		// .attach(rocket::fairing::AdHoc::on_shutdown("OpenTelemetry", |_| {
+		// 	Box::pin(async move {
+		// 		opentelemetry::global::shutdown_tracer_provider();
+		// 	})
+		// }))
 		.mount("/", routes![index, health])
 		.mount("/redirect", api::repology::routes())
 		.mount("/ci", api::ci::routes())
