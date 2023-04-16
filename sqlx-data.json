@@ -235,6 +235,27 @@
     },
     "query": "SELECT * FROM pkgs WHERE repo=$1 ORDER BY $2 LIMIT $3 OFFSET $4"
   },
+  "52bb098036e0c35521b3361ae1d1949c61788b84e7a271b1565ff08953057a7a": {
+    "describe": {
+      "columns": [
+        {
+          "name": "name",
+          "ordinal": 0,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT name FROM pkgs WHERE (dirs,repo)=($1,$2)"
+  },
   "567086729fc148c5c4ec75a05595d9038d322473b947983293b45cad5f85099a": {
     "describe": {
       "columns": [],
@@ -334,6 +355,24 @@
       }
     },
     "query": "DELETE FROM repos WHERE name = $1"
+  },
+  "95cd579bd61bc744836d0c942420241416396842998022440ff50b3d80615059": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          "Timestamp"
+        ]
+      }
+    },
+    "query": "INSERT INTO builds(pname,pver,prel,parch,id,repo,epoch,succ) VALUES ($1,$2,$3,$4,$5,$6,$7,false)"
   },
   "a94fbc7f6195e4168dbe27ab36949f2d0b4444e8e5e43df02eb84e193f087563": {
     "describe": {
