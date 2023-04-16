@@ -62,7 +62,7 @@ async fn redirect_andaspec(mut db: Connection<Mg>, repo: String, name: String) -
 			return None;
 		},
 	};
-	let (_, p) = hcl.project.into_iter().nth(0)?;
+	let (_, p) = hcl.project.into_iter().next()?;
 	Some(Redirect::to(format!("{link}/{dirs}/{}", p.rpm?.spec.display())))
 }
 #[get("/<repo>/packages/<name>/spec/raw")]
@@ -85,6 +85,6 @@ async fn redirect_andaspecraw(
 			return None;
 		},
 	};
-	let (_, p) = hcl.project.into_iter().nth(0)?;
+	let (_, p) = hcl.project.into_iter().next()?;
 	Some(Redirect::to(format!("{rawurl}/{dirs}/{}", p.rpm?.spec.display())))
 }

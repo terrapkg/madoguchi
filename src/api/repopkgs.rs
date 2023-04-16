@@ -73,7 +73,7 @@ pub async fn parse_primary_xml(
 				error!("Cannot parse repomd");
 				return None;
 			}
-			primaryurl = format!("{url}/{primaryurl}").to_string();
+			primaryurl = format!("{url}/{primaryurl}");
 		},
 		Err(_) => {
 			error!("Cannot fetch repomd");

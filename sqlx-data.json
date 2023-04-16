@@ -88,6 +88,37 @@
     },
     "query": "INSERT INTO pkgs(name, repo, ver, rel, arch, dirs) VALUES ($1,$2,$3,$4,$5,$6)"
   },
+  "23446e4fc7f619fb697695137049b7f94611a288af3ff42959dcb81551d52b25": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Varchar",
+          "Varchar"
+        ]
+      }
+    },
+    "query": "UPDATE repos SET (link, gh) = ($2,$3) WHERE name=$1"
+  },
+  "24890d793044181e51a7af3736ed12f972ac0c069e1f6b373e64b65a4b9c9ea6": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          "Varchar"
+        ]
+      }
+    },
+    "query": "INSERT INTO pkgs(name,repo,ver,rel,arch,dirs) VALUES ($1,$2,$3,$4,$5,$6)"
+  },
   "4807caa7cbce5af51d17763784298ba48310f4812eda8b8958fb6d6cf9db250a": {
     "describe": {
       "columns": [
@@ -268,23 +299,6 @@
     },
     "query": "INSERT INTO repos(name, link, gh) VALUES ($1,$2,$3)"
   },
-  "7b3615b8fb833bfb9463ab2392f5be53775be8a281ca6064de2aa3959263f5ed": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Varchar",
-          "Varchar",
-          "Varchar",
-          "Varchar",
-          "Varchar"
-        ]
-      }
-    },
-    "query": "INSERT INTO pkgs(name, repo, ver, rel, arch, dirs) VALUES ($1,$2,$3,$4,$5, $6)"
-  },
   "8660c6542141f151933f37ea7d840cd86aeace59886d1a055f5ec643cc5756cc": {
     "describe": {
       "columns": [
@@ -340,6 +354,23 @@
       }
     },
     "query": "SELECT gh FROM repos WHERE name = $1"
+  },
+  "b3ca0af017101ebd1f208a55d74d703d010406f18365c31437aedbf9fd210c09": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Text",
+          "Varchar",
+          "Varchar",
+          "Text",
+          "Varchar"
+        ]
+      }
+    },
+    "query": "UPDATE pkgs SET (ver,rel,dirs)=($3,$4,$6) WHERE (name,repo,arch)=($1,$2,$5)"
   },
   "b93c40e24a5add5cc7a4b9c4f599577c641b8c5cefb4674f01fc88b7ff2f1538": {
     "describe": {
