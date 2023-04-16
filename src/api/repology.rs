@@ -60,13 +60,15 @@ async fn redirect_andaspec(mut db: Connection<Mg>, repo: String, name: String) -
 		Err(err) => {
 			tracing::error!(?err, ?rawurl, ?dirs, ?repo, ?name, "No hcl found.");
 			return None;
-		}
+		},
 	};
 	let (_, p) = hcl.project.into_iter().nth(0)?;
 	Some(Redirect::to(format!("{link}/{dirs}/{}", p.rpm?.spec.display())))
 }
 #[get("/<repo>/packages/<name>/spec/raw")]
-async fn redirect_andaspecraw(mut db: Connection<Mg>, repo: String, name: String) -> Option<Redirect> {
+async fn redirect_andaspecraw(
+	mut db: Connection<Mg>, repo: String, name: String,
+) -> Option<Redirect> {
 	let dirs = sqlx::query!(
 		"SELECT dirs FROM pkgs WHERE name = $1 AND repo = $2 ORDER BY ver DESC",
 		name,
@@ -81,7 +83,7 @@ async fn redirect_andaspecraw(mut db: Connection<Mg>, repo: String, name: String
 		Err(err) => {
 			tracing::error!(?err, ?rawurl, ?dirs, ?repo, ?name, "No hcl found.");
 			return None;
-		}
+		},
 	};
 	let (_, p) = hcl.project.into_iter().nth(0)?;
 	Some(Redirect::to(format!("{rawurl}/{dirs}/{}", p.rpm?.spec.display())))

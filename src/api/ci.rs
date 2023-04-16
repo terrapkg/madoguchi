@@ -11,7 +11,7 @@
 /// You should have received a copy of the GNU General Public License along with Madoguchi.
 /// If not, see <https://www.gnu.org/licenses/>.
 ///
-use super::auth::{verify_token, ApiAuth};
+use super::auth::ApiAuth;
 use crate::db::Madoguchi as Mg;
 use rocket::http::Status;
 use rocket::serde::json::Json;
@@ -37,11 +37,8 @@ struct AddBuildBody {
 #[put("/<repo>/builds/<name>", data = "<build_body>")]
 async fn add_build(
 	mut db: Connection<Mg>, repo: String, name: String, build_body: Json<AddBuildBody>,
-	auth: ApiAuth,
+	_auth: ApiAuth,
 ) -> Status {
-	if !verify_token(&repo, &auth.token) {
-		return Status::Forbidden;
-	}
 	if sqlx::query!(
 		"SELECT name FROM pkgs WHERE name=$1 AND repo=$2 AND arch=$3",
 		name,

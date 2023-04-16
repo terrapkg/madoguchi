@@ -11,7 +11,7 @@
 /// You should have received a copy of the GNU General Public License along with Madoguchi.
 /// If not, see <https://www.gnu.org/licenses/>.
 ///
-use super::auth::{verify_token, ApiAuth};
+use super::auth::ApiAuth;
 use crate::db::{Build, Madoguchi as Mg, Pkg, Repo};
 use rocket::futures::StreamExt;
 use rocket::http::Status;
@@ -46,21 +46,18 @@ struct AddPkgBody {
 	dirs: String,
 }
 
-#[put("/<repo>/packages/<name>", data = "<package>")]
+#[put("/<repo>/packages/<name>", data = "<p>")]
 async fn add_pkg(
-	mut db: Connection<Mg>, auth: ApiAuth, repo: String, name: String, package: Json<AddPkgBody>,
+	mut db: Connection<Mg>, _auth: ApiAuth, repo: String, name: String, p: Json<AddPkgBody>,
 ) -> Status {
-	if !verify_token(&repo, &auth.token) {
-		return Status::Forbidden;
-	}
-	let dirs = package.dirs.strip_suffix('/').unwrap_or(&package.dirs);
+	let dirs = p.dirs.strip_suffix('/').unwrap_or(&p.dirs);
 	let q = q!(
-		"INSERT INTO pkgs(name, repo, ver, rel, arch, dirs) VALUES ($1,$2,$3,$4,$5, $6)",
+		"INSERT INTO pkgs(name,repo,ver,rel,arch,dirs) VALUES ($1,$2,$3,$4,$5,$6)",
 		name,
 		repo,
-		package.ver,
-		package.rel,
-		package.arch,
+		p.ver,
+		p.rel,
+		p.arch,
 		dirs
 	);
 	match q.execute(&mut *db).await {
@@ -76,14 +73,16 @@ async fn add_pkg(
 			tracing::error!("{e:#?}");
 			if let Some(e) = e.as_database_error() {
 				if e.code() == Some("23505".into()) {
-					// unique_violation
-					Status::Conflict
-				} else {
-					Status::InternalServerError
+					let q = q!(
+						"UPDATE pkgs SET (ver,rel,dirs)=($3,$4,$6) WHERE (name,repo,arch)=($1,$2,$5)",
+						name, repo, p.ver, p.rel, p.arch, dirs
+					);
+					if q.execute(&mut *db).await.is_ok() {
+						return Status::NoContent;
+					}
 				}
-			} else {
-				Status::InternalServerError
 			}
+			Status::InternalServerError
 		},
 	}
 }
@@ -91,20 +90,17 @@ async fn add_pkg(
 #[delete("/<repo>/packages/<name>?<ver>&<arch>&<rel>")]
 async fn del_pkg(
 	mut db: Connection<Mg>, repo: String, name: String, ver: String, arch: String, rel: String,
-	auth: ApiAuth,
+	_auth: ApiAuth,
 ) -> Status {
-	if !verify_token(&repo, &auth.token) {
-		return Status::Forbidden;
-	}
 	let q = q!(
 		"DELETE FROM pkgs WHERE name=$1 AND repo=$2 AND ver=$3 AND arch=$4 AND rel=$5",
 		name,
 		repo,
 		ver,
 		arch,
-		rel,
+		rel
 	);
-	if q.execute(&mut *db).await.map_or(false, |r| r.rows_affected() == 1) {
+	if q.execute(&mut *db).await.is_ok() {
 		Status::NoContent
 	} else {
 		Status::InternalServerError
@@ -119,11 +115,8 @@ struct AddRepoBody {
 
 #[put("/repos/<name>", data = "<repo>")]
 async fn add_repo(
-	mut db: Connection<Mg>, name: String, repo: Json<AddRepoBody>, auth: ApiAuth,
+	mut db: Connection<Mg>, name: String, repo: Json<AddRepoBody>, _auth: ApiAuth,
 ) -> Status {
-	if !verify_token(&name, &auth.token) {
-		return Status::Forbidden;
-	}
 	let link = repo.link.strip_suffix('/').unwrap_or(&repo.link);
 	let gh = repo.gh.strip_suffix('/').unwrap_or(&repo.gh);
 	let q = q!("INSERT INTO repos(name, link, gh) VALUES ($1,$2,$3)", name, link, gh);
@@ -138,22 +131,20 @@ async fn add_repo(
 		Err(e) => {
 			if let Some(e) = e.as_database_error() {
 				if e.code() == Some("23505".into()) {
-					Status::Conflict
-				} else {
-					Status::InternalServerError
+					let q =
+						q!("UPDATE repos SET (link, gh) = ($2,$3) WHERE name=$1", name, link, gh);
+					if q.execute(&mut *db).await.is_ok() {
+						return Status::NoContent;
+					}
 				}
-			} else {
-				Status::InternalServerError
 			}
+			Status::InternalServerError
 		},
 	}
 }
 
 #[delete("/repos/<name>")]
-async fn del_repo(mut db: Connection<Mg>, name: String, auth: ApiAuth) -> Status {
-	if !verify_token(&name, &auth.token) {
-		return Status::Forbidden;
-	}
+async fn del_repo(mut db: Connection<Mg>, name: String, _auth: ApiAuth) -> Status {
 	// the main point is to delete from the `repos` table, so we ignore errors
 	// we erase repo refs in pkgs and builds due to the "REFERENCES" (repo is fk)
 	let q = q!("DELETE FROM pkgs WHERE repo = $1", name);

@@ -15,10 +15,14 @@ pub struct ApiAuth {
 #[derive(Debug)]
 pub enum ApiError {
 	Nil,
+	NoAdminScope,
 }
 impl std::fmt::Display for ApiError {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "Random API Error")
+		match self {
+			ApiError::Nil => write!(f, "Fail to verify token"),
+			ApiError::NoAdminScope => write!(f, "Token has no admin scope as required"),
+		}
 	}
 }
 impl std::error::Error for ApiError {}
@@ -26,9 +30,14 @@ impl std::error::Error for ApiError {}
 impl<'r> FromRequest<'r> for ApiAuth {
 	type Error = ApiError;
 	async fn from_request(req: &'r rocket::Request<'_>) -> request::Outcome<Self, Self::Error> {
-		for auth in req.headers().get("Authorization") {
-			if let Some(token) = auth.strip_prefix("Bearer ") {
-				return request::Outcome::Success(ApiAuth { token: token.to_string() });
+		for token in req.headers().get("Authorization").filter_map(|a| a.strip_prefix("Bearer ")) {
+			let options = VerificationOptions::default();
+			if let Ok(claims) = JWT_KEY.verify_token::<CustomClaims>(token, Some(options)) {
+				return if claims.custom.scopes.contains(&"admin".to_string()) {
+					request::Outcome::Success(ApiAuth { token: token.to_string() })
+				} else {
+					request::Outcome::Failure((Status::Forbidden, ApiError::NoAdminScope))
+				};
 			}
 		}
 		request::Outcome::Failure((Status::Forbidden, ApiError::Nil))
@@ -39,13 +48,4 @@ impl<'r> FromRequest<'r> for ApiAuth {
 struct CustomClaims {
 	// Right now, this is the same as subatomic, where admin is only currently supported
 	scopes: Vec<String>,
-}
-
-pub fn verify_token(_repo: &str, token: &str) -> bool {
-	let options = VerificationOptions::default();
-	if let Ok(claims) = JWT_KEY.verify_token::<CustomClaims>(token, Some(options)) {
-		claims.custom.scopes.contains(&"admin".to_string())
-	} else {
-		false
-	}
 }
