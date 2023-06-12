@@ -19,9 +19,7 @@ serde = "1.0.152"
 serde_json = "1.0.93"
 sqlx = { version = "0.6.3", features = ["runtime-tokio-rustls", "postgres", "chrono", "time", "macros", "json", "offline"] }
 chrono = { version = "0.4.23", features = ["serde"] }
-quick-xml = { version = "0.27.1", features = ["async-tokio", "serialize"] }
 reqwest = { version = "0.11.14", features = ["json", "stream"] }
-async-compression = { version = "0.3.15", features = ["gzip", "futures-io"] }
 tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.16", features = ["env-filter", "tracing-log"] }
 tracing-log = "0.1.3"

@@ -25,16 +25,7 @@ use tracing::error;
 const MAX_LIM: i64 = 100;
 
 pub(crate) fn routes() -> Vec<Route> {
-	routes![
-		add_pkg,
-		del_pkg,
-		add_repo,
-		del_repo,
-		list_repos,
-		search_pkgs,
-		pkg_info,
-		list_builds
-	]
+	routes![add_pkg, del_pkg, add_repo, del_repo, list_repos, search_pkgs, pkg_info, list_builds]
 }
 
 #[derive(Deserialize)]
