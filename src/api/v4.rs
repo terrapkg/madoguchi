@@ -20,7 +20,7 @@ use rocket::{delete, get, put, routes, Route};
 use rocket_db_pools::Connection;
 use serde::{Deserialize, Serialize};
 use sqlx::{query as q, query_as as qa};
-use tracing::{error, info, instrument, trace, warn};
+use tracing::error;
 
 const MAX_LIM: i64 = 100;
 
@@ -30,7 +30,6 @@ pub(crate) fn routes() -> Vec<Route> {
 		del_pkg,
 		add_repo,
 		del_repo,
-		list_pkgs,
 		list_repos,
 		search_pkgs,
 		pkg_info,
@@ -214,79 +213,6 @@ struct RepologyPkg {
 	category: String,
 	build: Option<String>,
 	arch: String,
-}
-
-#[instrument(skip(db))]
-#[get("/<repo>/packages-all")]
-async fn list_pkgs(
-	mut db: Connection<Mg>, repo: String,
-) -> Result<rocket::serde::json::Value, Status> {
-	let (url, gh) =
-		match q!("SELECT link,gh FROM repos WHERE name = $1", repo).fetch_one(&mut *db).await {
-			Ok(r) => (r.link, r.gh),
-			Err(e) => {
-				if e.to_string()
-					== "no rows returned by a query that expected to return at least one row"
-				{
-					return Err(Status::NotFound);
-				} else {
-					error!("DB err: {}", e.to_string());
-					return Err(Status::BadRequest);
-				}
-			},
-		};
-	trace!(url, gh, "repo exists");
-	let fut = rocket::tokio::spawn(super::repopkgs::parse_primary_xml(url));
-	let mut pkgs = vec![];
-	let mut res = qa!(Pkg, "SELECT * FROM pkgs WHERE repo=$1", repo).fetch(&mut *db);
-	while let Some(item) = res.next().await {
-		match item {
-			Ok(p) => pkgs.push(p),
-			Err(e) => warn!(?e, "while sel pkgs"),
-		}
-	}
-	drop(res); // need to mutably borrow db later
-	info!("Found {} packages.", pkgs.len());
-	trace!(?pkgs);
-	let mut bids = vec![];
-	for p in &pkgs {
-		bids.push(q!("SELECT id FROM builds WHERE pname=$1 AND pver=$2 AND parch=$3 AND repo=$4 AND succ=true AND prel=$5", p.name, p.ver, p.arch, repo, p.rel).fetch_one(&mut *db).await.ok().map(|x| x.id));
-	}
-	trace!(?bids);
-	let mut infs = match fut.await.unwrap() {
-		Some(x) => x,
-		None => {
-			error!("packages-all basically died");
-			return Err(Status::InternalServerError);
-		},
-	};
-	trace!(?infs);
-	let mut rpkgs = vec![];
-	for (p, b) in pkgs.into_iter().zip(bids) {
-		let inf = match infs.remove(&(
-			p.name.to_owned(),
-			p.ver.to_owned(),
-			p.rel.to_owned(),
-			p.arch.to_owned(),
-		)) {
-			Some(i) => i,
-			None => continue,
-		};
-		rpkgs.push(RepologyPkg {
-			name: p.name,
-			version: p.ver,
-			release: p.rel,
-			url: format!("{gh}/{}", p.dirs),
-			arch: p.arch,
-			build: b.map(|x| format!("https://github.com/terrapkg/packages/actions/runs/{x}")),
-			category: p.dirs.clone(), // fixme
-			license: inf.license,
-			// maintainers: vec![], // todo
-			recipe: format!("{gh}/{}/anda.hcl", p.dirs),
-			summary: inf.summary,
-		});
-	}
-	Ok(serde_json::json!(rpkgs))
 }
 
 #[get("/<repo>/packages/<name>")]
