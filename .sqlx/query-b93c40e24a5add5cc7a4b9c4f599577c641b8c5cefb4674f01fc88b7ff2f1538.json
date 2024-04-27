@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO builds(pname,pver,prel,parch,id,repo,epoch,succ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Timestamp",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b93c40e24a5add5cc7a4b9c4f599577c641b8c5cefb4674f01fc88b7ff2f1538"
+}

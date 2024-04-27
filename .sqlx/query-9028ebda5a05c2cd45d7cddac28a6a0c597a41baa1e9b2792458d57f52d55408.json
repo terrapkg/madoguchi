@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM repos WHERE name = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9028ebda5a05c2cd45d7cddac28a6a0c597a41baa1e9b2792458d57f52d55408"
+}

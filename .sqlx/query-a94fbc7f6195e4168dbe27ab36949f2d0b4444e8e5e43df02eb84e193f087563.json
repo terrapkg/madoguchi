@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT gh FROM repos WHERE name = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "gh",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "a94fbc7f6195e4168dbe27ab36949f2d0b4444e8e5e43df02eb84e193f087563"
+}

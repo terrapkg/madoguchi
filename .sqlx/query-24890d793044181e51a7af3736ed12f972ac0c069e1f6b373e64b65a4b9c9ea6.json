@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO pkgs(name,repo,ver,rel,arch,dirs) VALUES ($1,$2,$3,$4,$5,$6)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "24890d793044181e51a7af3736ed12f972ac0c069e1f6b373e64b65a4b9c9ea6"
+}

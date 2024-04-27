@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT dirs FROM pkgs WHERE name = $1 AND repo = $2 ORDER BY ver DESC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "dirs",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "00dab320ddee5214ef3a8f0c2829917cb440ee43ab722899f4611ec4b7311d71"
+}

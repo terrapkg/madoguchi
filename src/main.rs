@@ -37,7 +37,7 @@ fn chks() {
 
 async fn migrate(rocket: Rocket<Build>) -> fairing::Result {
 	match db::Madoguchi::fetch(&rocket) {
-		Some(db) => match sqlx::migrate!().run(&**db).await {
+		Some(db) => match rocket_db_pools::sqlx::migrate!().run(&**db).await {
 			Ok(_) => Ok(rocket),
 			Err(e) => {
 				error!("Fail to init db: {e}");

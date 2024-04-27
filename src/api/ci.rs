@@ -48,7 +48,7 @@ async fn add_build(
 		repo,
 		build_body.arch
 	)
-	.fetch_one(&mut *db)
+	.fetch_one(&mut **db)
 	.await
 	.is_err()
 	{
@@ -61,7 +61,7 @@ async fn add_build(
 			build_body.arch,
 			build_body.dirs.trim_matches('/'),
 		)
-		.execute(&mut *db)
+		.execute(&mut **db)
 		.await
 		{
 			tracing::error!(?build_body, repo, name, ?err, "Cannot add pkgs");
@@ -78,7 +78,7 @@ async fn add_build(
 			repo,
 			build_body.arch,
 		)
-		.execute(&mut *db)
+		.execute(&mut **db)
 		.await
 		{
 			tracing::error!(?build_body, repo, name, ?err, "Cannot update pkgs");
@@ -98,7 +98,7 @@ async fn add_build(
 		ep,
 		build_body.succ,
 	);
-	match q.execute(&mut *db).await {
+	match q.execute(&mut **db).await {
 		Ok(_) => Status::Created,
 		Err(e) => {
 			eprintln!("{e:?}");
@@ -109,14 +109,14 @@ async fn add_build(
 
 async fn add_failed_build(mut db: Connection<Mg>, r: String, b: Json<AddBuildBody>) -> Status {
 	let q = sqlx::query!("SELECT name FROM pkgs WHERE (dirs,repo)=($1,$2)", b.dirs, r);
-	let names: Vec<String> = match q.fetch_all(&mut *db).await {
+	let names: Vec<String> = match q.fetch_all(&mut **db).await {
 		Ok(r) => r.into_iter().map(|r| r.name).collect(),
 		Err(_) => return Status::NotFound,
 	};
 	let ep = chrono::Utc::now().naive_utc();
 	for name in names {
 		let q = sqlx::query!("INSERT INTO builds(pname,pver,prel,parch,id,repo,epoch,succ) VALUES ($1,$2,$3,$4,$5,$6,$7,false)",name,b.ver,b.rel,b.arch,b.id,r,ep);
-		if let Err(e) = q.execute(&mut *db).await {
+		if let Err(e) = q.execute(&mut **db).await {
 			tracing::error!(err=?e, "Ignoring error during insertion of failed build");
 		}
 	}

@@ -1,0 +1,65 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT * FROM builds WHERE repo=$1 AND pname=$2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "epoch",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 1,
+        "name": "pname",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "parch",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "repo",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "succ",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 5,
+        "name": "pver",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "prel",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "id",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "4807caa7cbce5af51d17763784298ba48310f4812eda8b8958fb6d6cf9db250a"
+}

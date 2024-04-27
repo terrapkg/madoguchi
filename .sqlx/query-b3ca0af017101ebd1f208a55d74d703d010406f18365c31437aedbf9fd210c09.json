@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE pkgs SET (ver,rel,dirs)=($3,$4,$6) WHERE (name,repo,arch)=($1,$2,$5)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Varchar",
+        "Varchar",
+        "Text",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b3ca0af017101ebd1f208a55d74d703d010406f18365c31437aedbf9fd210c09"
+}

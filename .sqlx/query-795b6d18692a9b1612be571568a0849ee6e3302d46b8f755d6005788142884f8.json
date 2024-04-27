@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO repos(name, link, gh) VALUES ($1,$2,$3)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Varchar",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "795b6d18692a9b1612be571568a0849ee6e3302d46b8f755d6005788142884f8"
+}
