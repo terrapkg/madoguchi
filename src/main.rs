@@ -13,6 +13,7 @@
 // You should have received a copy of the GNU General Public License along with Madoguchi.
 // If not, see <https://www.gnu.org/licenses/>.
 //
+#[allow(unused_imports)]
 mod api;
 mod db;
 use rocket::*;
