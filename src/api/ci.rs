@@ -20,6 +20,10 @@ use rocket_db_pools::Connection;
 use serde::Deserialize;
 use sqlx::types::chrono;
 
+lazy_static::lazy_static! {
+	static ref WEBHOOKER: webhook::client::WebhookClient = webhook::client::WebhookClient::new(&std::env::var("DISCORD_WEBHOOK").unwrap());
+}
+
 pub(crate) fn routes() -> Vec<Route> {
 	routes![add_build]
 }
@@ -108,7 +112,7 @@ async fn add_build(
 }
 
 async fn add_failed_build(mut db: Connection<Mg>, r: String, b: Json<AddBuildBody>) -> Status {
-	let q = sqlx::query!("SELECT name FROM pkgs WHERE (dirs,repo)=($1,$2)", b.dirs, r);
+	let q = sqlx::query!("SELECT name FROM pkgs WHERE (dirs,repo)=($1,$2)", b.dirs, &r);
 	let names: Vec<String> = match q.fetch_all(&mut **db).await {
 		Ok(r) => r.into_iter().map(|r| r.name).collect(),
 		Err(_) => return Status::NotFound,
@@ -120,5 +124,23 @@ async fn add_failed_build(mut db: Connection<Mg>, r: String, b: Json<AddBuildBod
 			tracing::error!(err=?e, "Ignoring error during insertion of failed build");
 		}
 	}
+
+	send_webhook(format!(
+		r#"
+<:incorrect:1176633989864362094> Build Failing on **{r}** (*{}*)
+⇒ [Run for {}](https://github.com/terrapkg/packages/actions/run/{}/)"#,
+		&b.arch, &b.dirs, &b.id
+	))
+	.await;
+
 	Status::NoContent
+}
+
+async fn send_webhook(s: String) {
+	let msg = WEBHOOKER.send(|msg| {
+		msg.username("Terra Webhook (mg)")
+			.avatar_url("https://avatars.githubusercontent.com/u/114906088")
+			.content(&s)
+	});
+	let _ = msg.await;
 }

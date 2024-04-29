@@ -33,6 +33,7 @@ async fn health() -> &'static str {
 
 fn chks() {
 	assert!(std::env::var("JWT_KEY").is_ok(), "JWT_KEY cannot be empty.");
+	assert!(std::env::var("DISCORD_WEBHOOK").is_ok(), "DISCORD_WEBHOOK cannot be empty.");
 }
 
 async fn migrate(rocket: Rocket<Build>) -> fairing::Result {
