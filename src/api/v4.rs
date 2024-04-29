@@ -50,7 +50,7 @@ async fn add_pkg(
 		p.arch,
 		dirs
 	);
-	match q.execute(&mut *db).await {
+	match q.execute(&mut **db).await {
 		Ok(res) => {
 			if res.rows_affected() != 1 {
 				tracing::error!("Affected more than 1 rows?");
@@ -67,7 +67,7 @@ async fn add_pkg(
 						"UPDATE pkgs SET (ver,rel,dirs)=($3,$4,$6) WHERE (name,repo,arch)=($1,$2,$5)",
 						name, repo, p.ver, p.rel, p.arch, dirs
 					);
-					if q.execute(&mut *db).await.is_ok() {
+					if q.execute(&mut **db).await.is_ok() {
 						return Status::NoContent;
 					}
 				}
@@ -90,7 +90,7 @@ async fn del_pkg(
 		arch,
 		rel
 	);
-	if q.execute(&mut *db).await.is_ok() {
+	if q.execute(&mut **db).await.is_ok() {
 		Status::NoContent
 	} else {
 		Status::InternalServerError
@@ -110,7 +110,7 @@ async fn add_repo(
 	let link = repo.link.strip_suffix('/').unwrap_or(&repo.link);
 	let gh = repo.gh.strip_suffix('/').unwrap_or(&repo.gh);
 	let q = q!("INSERT INTO repos(name, link, gh) VALUES ($1,$2,$3)", name, link, gh);
-	match q.execute(&mut *db).await {
+	match q.execute(&mut **db).await {
 		Ok(res) => {
 			if res.rows_affected() != 1 {
 				Status::InternalServerError
@@ -123,7 +123,7 @@ async fn add_repo(
 				if e.code() == Some("23505".into()) {
 					let q =
 						q!("UPDATE repos SET (link, gh) = ($2,$3) WHERE name=$1", name, link, gh);
-					if q.execute(&mut *db).await.is_ok() {
+					if q.execute(&mut **db).await.is_ok() {
 						return Status::NoContent;
 					}
 				}
@@ -138,15 +138,15 @@ async fn del_repo(mut db: Connection<Mg>, name: String, _auth: ApiAuth) -> Statu
 	// the main point is to delete from the `repos` table, so we ignore errors
 	// we erase repo refs in pkgs and builds due to the "REFERENCES" (repo is fk)
 	let q = q!("DELETE FROM pkgs WHERE repo = $1", name);
-	if let Err(e) = q.execute(&mut *db).await {
+	if let Err(e) = q.execute(&mut **db).await {
 		error!("DEL REPO {name} pkgs FAIL: {e:#?}");
 	}
 	let q = q!("DELETE FROM builds WHERE repo = $1", name);
-	if let Err(e) = q.execute(&mut *db).await {
+	if let Err(e) = q.execute(&mut **db).await {
 		eprintln!("DEL REPO {name} builds FAIL: {e:#?}");
 	}
 	let q = q!("DELETE FROM repos WHERE name = $1", name);
-	q.execute(&mut *db).await.map_or(Status::InternalServerError, |r| {
+	q.execute(&mut **db).await.map_or(Status::InternalServerError, |r| {
 		if r.rows_affected() == 1 {
 			Status::NoContent
 		} else if r.rows_affected() == 0 {
@@ -160,7 +160,7 @@ async fn del_repo(mut db: Connection<Mg>, name: String, _auth: ApiAuth) -> Statu
 
 #[get("/repos")]
 async fn list_repos(mut db: Connection<Mg>) -> rocket::serde::json::Value {
-	let q = qa::<_, Repo>("SELECT * FROM repos").fetch(&mut *db);
+	let q = qa::<_, Repo>("SELECT * FROM repos").fetch(&mut **db);
 	serde_json::json!(q.map(|x| { x.expect("Can't list repos?") }).collect::<Vec<Repo>>().await)
 }
 
@@ -180,7 +180,7 @@ async fn search_pkgs(
 	let f = offset.unwrap_or(0);
 	let res =
 		qa!(Pkg, "SELECT * FROM pkgs WHERE repo=$1 ORDER BY $2 LIMIT $3 OFFSET $4", repo, o, n, f)
-			.fetch(&mut *db)
+			.fetch(&mut **db)
 			.map(|x| x.ok())
 			.collect::<Vec<Option<Pkg>>>()
 			.await;
@@ -211,7 +211,7 @@ async fn pkg_info(
 	mut db: Connection<Mg>, repo: String, name: String,
 ) -> Result<rocket::serde::json::Value, Status> {
 	let res = qa!(Pkg, "SELECT * FROM pkgs WHERE repo=$1 AND name=$2", repo, name)
-		.fetch_one(&mut *db)
+		.fetch_one(&mut **db)
 		.await;
 	if let Ok(res) = res {
 		Ok(serde_json::json!(res))
@@ -225,7 +225,7 @@ async fn list_builds(
 	mut db: Connection<Mg>, repo: String, pkg: String,
 ) -> Result<rocket::serde::json::Value, Status> {
 	let res = qa!(Build, "SELECT * FROM builds WHERE repo=$1 AND pname=$2", repo, pkg);
-	if let Ok(builds) = res.fetch_all(&mut *db).await {
+	if let Ok(builds) = res.fetch_all(&mut **db).await {
 		Ok(serde_json::json!(builds))
 	} else {
 		Err(Status::NotFound)

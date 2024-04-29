@@ -36,11 +36,11 @@ impl<'r> FromRequest<'r> for ApiAuth {
 				return if claims.custom.scopes.contains(&"admin".to_string()) {
 					request::Outcome::Success(ApiAuth { token: token.to_string() })
 				} else {
-					request::Outcome::Failure((Status::Forbidden, ApiError::NoAdminScope))
+					request::Outcome::Error((Status::Forbidden, ApiError::NoAdminScope))
 				};
 			}
 		}
-		request::Outcome::Failure((Status::Forbidden, ApiError::Nil))
+		request::Outcome::Error((Status::Forbidden, ApiError::Nil))
 	}
 }
 

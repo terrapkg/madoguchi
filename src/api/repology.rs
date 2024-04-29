@@ -27,9 +27,9 @@ async fn redirect_pkg(mut db: Connection<Mg>, repo: String, name: String) -> Opt
 		name,
 		repo
 	);
-	let dirs = dirs.fetch_one(&mut *db).await.ok()?.dirs;
+	let dirs = dirs.fetch_one(&mut **db).await.ok()?.dirs;
 	let link = sqlx::query!("SELECT gh FROM repos WHERE name = $1", repo);
-	let link = link.fetch_one(&mut *db).await.ok()?.gh;
+	let link = link.fetch_one(&mut **db).await.ok()?.gh;
 	Some(Redirect::to(format!("{link}/{dirs}")))
 }
 #[get("/<repo>/packages/<name>/hcl")]
@@ -39,9 +39,9 @@ async fn redirect_andahcl(mut db: Connection<Mg>, repo: String, name: String) ->
 		name,
 		repo
 	);
-	let dirs = dirs.fetch_one(&mut *db).await.ok()?.dirs;
+	let dirs = dirs.fetch_one(&mut **db).await.ok()?.dirs;
 	let link = sqlx::query!("SELECT gh FROM repos WHERE name = $1", repo);
-	let link = link.fetch_one(&mut *db).await.ok()?.gh;
+	let link = link.fetch_one(&mut **db).await.ok()?.gh;
 	Some(Redirect::to(format!("{link}/{dirs}/anda.hcl")))
 }
 #[get("/<repo>/packages/<name>/spec")]
@@ -51,9 +51,9 @@ async fn redirect_andaspec(mut db: Connection<Mg>, repo: String, name: String) -
 		name,
 		repo
 	);
-	let dirs = dirs.fetch_one(&mut *db).await.ok()?.dirs;
+	let dirs = dirs.fetch_one(&mut **db).await.ok()?.dirs;
 	let link = sqlx::query!("SELECT gh FROM repos WHERE name = $1", repo);
-	let link = link.fetch_one(&mut *db).await.ok()?.gh;
+	let link = link.fetch_one(&mut **db).await.ok()?.gh;
 	let rawurl = link.replace("github.com", "raw.githubusercontent.com").replace("/tree/", "/");
 	let hcl = match reqwest::get(format!("{rawurl}/{dirs}/anda.hcl")).await {
 		Ok(r) => anda_config::load_from_string(&r.text().await.ok()?).ok()?,
@@ -74,9 +74,9 @@ async fn redirect_andaspecraw(
 		name,
 		repo
 	);
-	let dirs = dirs.fetch_one(&mut *db).await.ok()?.dirs;
+	let dirs = dirs.fetch_one(&mut **db).await.ok()?.dirs;
 	let link = sqlx::query!("SELECT gh FROM repos WHERE name = $1", repo);
-	let link = link.fetch_one(&mut *db).await.ok()?.gh;
+	let link = link.fetch_one(&mut **db).await.ok()?.gh;
 	let rawurl = link.replace("github.com", "raw.githubusercontent.com").replace("/tree/", "/");
 	let hcl = match reqwest::get(format!("{rawurl}/{dirs}/anda.hcl")).await {
 		Ok(r) => anda_config::load_from_string(&r.text().await.ok()?).ok()?,

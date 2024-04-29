@@ -1,0 +1,55 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT * FROM pkgs WHERE repo=$1 ORDER BY $2 LIMIT $3 OFFSET $4",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "repo",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "arch",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "dirs",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "ver",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "rel",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "48eb467736936f86ce7271ae3044c259611a5e126c659d5bcb5334ac8ed7965b"
+}

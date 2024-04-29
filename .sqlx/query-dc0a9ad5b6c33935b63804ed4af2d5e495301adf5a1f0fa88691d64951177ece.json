@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM pkgs WHERE repo = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "dc0a9ad5b6c33935b63804ed4af2d5e495301adf5a1f0fa88691d64951177ece"
+}
