@@ -7,13 +7,13 @@ name: Docker
 
 on:
   schedule:
-    - cron: '37 12 * * *'
+    - cron: "37 12 * * *"
   push:
-    branches: [ "master" ]
+    branches: ["master"]
     # Publish semver tags as releases.
-    tags: [ 'v*' ]
+    tags: ["v*"]
   pull_request:
-    branches: [ "master" ]
+    branches: ["master"]
   workflow_dispatch:
 
 env:
@@ -22,10 +22,8 @@ env:
   # github.repository as <account>/<repo>
   IMAGE_NAME: ${{ github.repository }}
 
-
 jobs:
   build:
-
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -40,12 +38,12 @@ jobs:
 
       # Install the cosign tool except on PR
       # https://github.com/sigstore/cosign-installer
-      #- name: Install cosign
-      #  if: github.event_name != 'pull_request'
-      #  uses: sigstore/cosign-installer@f3c664df7af409cb4873aa5068053ba9d61a57b6 #v2.6.0
-      #  with:
-      #    cosign-release: 'v1.13.1'
-          
+      - name: Install cosign
+        if: github.event_name != 'pull_request'
+        uses: sigstore/cosign-installer@f3c664df7af409cb4873aa5068053ba9d61a57b6 #v2.6.0
+        with:
+          cosign-release: "v2.2.4"
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
         with:
