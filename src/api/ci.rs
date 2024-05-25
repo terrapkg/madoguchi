@@ -124,12 +124,12 @@ async fn add_failed_build(mut db: Connection<Mg>, r: String, b: Json<AddBuildBod
 			tracing::error!(err=?e, "Ignoring error during insertion of failed build");
 		}
 	}
+	let (arch, dir, bid) = (&b.arch, &b.dirs, &b.id);
 
 	send_webhook(format!(
 		r#"
-<:incorrect:1176633989864362094> Build Failing on **{r}** (*{}*)
-⇒ [Run for {}](https://github.com/terrapkg/packages/actions/run/{}/)"#,
-		&b.arch, &b.dirs, &b.id
+<:incorrect:1176633989864362094> Build Failing on **{r}**: **{dir}** (*{arch}*)
+⇒ [gha](https://github.com/terrapkg/packages/actions/runs/{bid}/)"#,
 	))
 	.await;
 

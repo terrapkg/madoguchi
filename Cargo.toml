@@ -23,5 +23,5 @@ reqwest = { version = "0.11.14", features = ["json", "stream"] }
 tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.16", features = ["env-filter", "tracing-log"] }
 tracing-logfmt = "0.3.1"
-anda-config = "0.1.4"
+anda-config = "0.1.9"
 webhook = "2.1.2"
