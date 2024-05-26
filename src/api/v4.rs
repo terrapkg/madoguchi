@@ -191,21 +191,6 @@ async fn search_pkgs(
 	}
 }
 
-#[derive(Serialize)]
-struct RepologyPkg {
-	name: String,
-	version: String,
-	release: String,
-	url: String,
-	recipe: String,
-	// maintainers: Vec<String>,
-	summary: String,
-	license: String,
-	category: String,
-	build: Option<String>,
-	arch: String,
-}
-
 #[get("/<repo>/packages/<name>")]
 async fn pkg_info(
 	mut db: Connection<Mg>, repo: String, name: String,
