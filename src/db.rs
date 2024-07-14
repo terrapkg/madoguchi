@@ -45,4 +45,5 @@ pub struct Build {
 	pub parch: String,
 	pub repo: String,
 	pub succ: bool,
+	pub commit: String,
 }
