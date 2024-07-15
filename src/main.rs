@@ -66,6 +66,7 @@ async fn rocket() -> _ {
 		.mount("/", routes![index, health])
 		.mount("/redirect", api::repology::routes())
 		.mount("/ci", api::ci::routes())
+		.mount("/ci5", api::ci5::routes())
 		.mount("/api", api::v4::routes())
 		.mount("/v4", api::v4::routes())
 }
