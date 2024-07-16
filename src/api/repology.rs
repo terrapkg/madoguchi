@@ -20,8 +20,7 @@ pub(crate) fn routes() -> Vec<Route> {
 	routes![redirect_pkg, redirect_andahcl, redirect_andaspec, redirect_andaspecraw]
 }
 
-#[get("/<repo>/packages/<name>")]
-async fn redirect_pkg(mut db: Connection<Mg>, repo: String, name: String) -> Option<Redirect> {
+async fn rootdir(mut db: Connection<Mg>, repo: String, name: String) -> Option<String> {
 	let dirs = sqlx::query!(
 		"SELECT dirs FROM pkgs WHERE name = $1 AND repo = $2 ORDER BY ver DESC",
 		name,
@@ -30,61 +29,56 @@ async fn redirect_pkg(mut db: Connection<Mg>, repo: String, name: String) -> Opt
 	let dirs = dirs.fetch_one(&mut **db).await.ok()?.dirs;
 	let link = sqlx::query!("SELECT gh FROM repos WHERE name = $1", repo);
 	let link = link.fetch_one(&mut **db).await.ok()?.gh;
-	Some(Redirect::to(format!("{link}/{dirs}")))
+	let commit = sqlx::query!(
+		"SELECT commit FROM builds WHERE pname=$1 AND repo=$2 AND succ LIMIT 1",
+		name,
+		repo
+	);
+	let mut s = format!("{link}/{dirs}");
+	if let Some(commit) = commit.fetch_one(&mut **db).await.ok().and_then(|x| x.commit) {
+		s = format!(
+			"https://github.com/terrapkg/packages/tree/{commit}{}",
+			s.trim_start_matches("https://github.com/terrapkg/packages/tree/")
+				.trim_start_matches(|ch| ch != '/')
+		);
+	}
+	tracing::trace!(s);
+	Some(s)
+}
+
+#[get("/<repo>/packages/<name>")]
+async fn redirect_pkg(db: Connection<Mg>, repo: String, name: String) -> Option<Redirect> {
+	Some(Redirect::to(rootdir(db, repo, name).await?))
 }
 #[get("/<repo>/packages/<name>/hcl")]
-async fn redirect_andahcl(mut db: Connection<Mg>, repo: String, name: String) -> Option<Redirect> {
-	let dirs = sqlx::query!(
-		"SELECT dirs FROM pkgs WHERE name = $1 AND repo = $2 ORDER BY ver DESC",
-		name,
-		repo
-	);
-	let dirs = dirs.fetch_one(&mut **db).await.ok()?.dirs;
-	let link = sqlx::query!("SELECT gh FROM repos WHERE name = $1", repo);
-	let link = link.fetch_one(&mut **db).await.ok()?.gh;
-	Some(Redirect::to(format!("{link}/{dirs}/anda.hcl")))
+async fn redirect_andahcl(db: Connection<Mg>, repo: String, name: String) -> Option<Redirect> {
+	Some(Redirect::to(format!("{}/anda.hcl", rootdir(db, repo, name).await?)))
 }
 #[get("/<repo>/packages/<name>/spec")]
-async fn redirect_andaspec(mut db: Connection<Mg>, repo: String, name: String) -> Option<Redirect> {
-	let dirs = sqlx::query!(
-		"SELECT dirs FROM pkgs WHERE name = $1 AND repo = $2 ORDER BY ver DESC",
-		name,
-		repo
-	);
-	let dirs = dirs.fetch_one(&mut **db).await.ok()?.dirs;
-	let link = sqlx::query!("SELECT gh FROM repos WHERE name = $1", repo);
-	let link = link.fetch_one(&mut **db).await.ok()?.gh;
-	let rawurl = link.replace("github.com", "raw.githubusercontent.com").replace("/tree/", "/");
-	let hcl = match reqwest::get(format!("{rawurl}/{dirs}/anda.hcl")).await {
+async fn redirect_andaspec(db: Connection<Mg>, repo: String, name: String) -> Option<Redirect> {
+	let rootdir = rootdir(db, repo, name).await?;
+	let rawurl = rootdir.replace("github.com", "raw.githubusercontent.com").replace("/tree/", "/");
+	let hcl = match reqwest::get(format!("{rawurl}/anda.hcl")).await {
 		Ok(r) => anda_config::load_from_string(&r.text().await.ok()?).ok()?,
 		Err(err) => {
-			tracing::error!(?err, ?rawurl, ?dirs, ?repo, ?name, "No hcl found.");
+			tracing::error!(?err, ?rawurl, "No hcl found.");
 			return None;
 		},
 	};
 	let (_, p) = hcl.project.into_iter().next()?;
-	Some(Redirect::to(format!("{link}/{dirs}/{}", p.rpm?.spec.display())))
+	Some(Redirect::to(format!("{rootdir}/{}", p.rpm?.spec.display())))
 }
 #[get("/<repo>/packages/<name>/spec/raw")]
-async fn redirect_andaspecraw(
-	mut db: Connection<Mg>, repo: String, name: String,
-) -> Option<Redirect> {
-	let dirs = sqlx::query!(
-		"SELECT dirs FROM pkgs WHERE name = $1 AND repo = $2 ORDER BY ver DESC",
-		name,
-		repo
-	);
-	let dirs = dirs.fetch_one(&mut **db).await.ok()?.dirs;
-	let link = sqlx::query!("SELECT gh FROM repos WHERE name = $1", repo);
-	let link = link.fetch_one(&mut **db).await.ok()?.gh;
-	let rawurl = link.replace("github.com", "raw.githubusercontent.com").replace("/tree/", "/");
-	let hcl = match reqwest::get(format!("{rawurl}/{dirs}/anda.hcl")).await {
+async fn redirect_andaspecraw(db: Connection<Mg>, repo: String, name: String) -> Option<Redirect> {
+	let rootdir = rootdir(db, repo, name).await?;
+	let rawurl = rootdir.replace("github.com", "raw.githubusercontent.com").replace("/tree/", "/");
+	let hcl = match reqwest::get(format!("{rawurl}/anda.hcl")).await {
 		Ok(r) => anda_config::load_from_string(&r.text().await.ok()?).ok()?,
 		Err(err) => {
-			tracing::error!(?err, ?rawurl, ?dirs, ?repo, ?name, "No hcl found.");
+			tracing::error!(?err, ?rawurl, "No hcl found.");
 			return None;
 		},
 	};
 	let (_, p) = hcl.project.into_iter().next()?;
-	Some(Redirect::to(format!("{rawurl}/{dirs}/{}", p.rpm?.spec.display())))
+	Some(Redirect::to(format!("{rawurl}/{}", p.rpm?.spec.display())))
 }
