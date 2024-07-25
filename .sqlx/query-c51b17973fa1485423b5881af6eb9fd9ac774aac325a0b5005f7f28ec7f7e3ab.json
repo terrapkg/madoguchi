@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT commit FROM builds WHERE pname=$1 AND repo=$2 AND succ LIMIT 1",
+  "query": "SELECT commit FROM builds WHERE pname=$1 AND repo=$2 AND succ ORDER BY epoch DESC LIMIT 1",
   "describe": {
     "columns": [
       {
@@ -19,5 +19,5 @@
       true
     ]
   },
-  "hash": "6c3ea4411d780250e7e88966259c81722558dc09cd2a17073c72e3ddb3e78cdb"
+  "hash": "c51b17973fa1485423b5881af6eb9fd9ac774aac325a0b5005f7f28ec7f7e3ab"
 }

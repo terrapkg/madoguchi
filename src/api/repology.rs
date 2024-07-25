@@ -30,7 +30,7 @@ async fn rootdir(mut db: Connection<Mg>, repo: String, name: String) -> Option<S
 	let link = sqlx::query!("SELECT gh FROM repos WHERE name = $1", repo);
 	let link = link.fetch_one(&mut **db).await.ok()?.gh;
 	let commit = sqlx::query!(
-		"SELECT commit FROM builds WHERE pname=$1 AND repo=$2 AND succ LIMIT 1",
+		"SELECT commit FROM builds WHERE pname=$1 AND repo=$2 AND succ ORDER BY epoch DESC LIMIT 1",
 		name,
 		repo
 	);
