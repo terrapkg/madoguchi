@@ -11,13 +11,13 @@ edition = "2021"
 [dependencies]
 base64 = "0.22.1"
 dotenv = "0.15.0"
-jwt-simple = "0.12.9"
+jwt-simple = "0.12.12"
 lazy_static = "1.5.0"
 rocket = { version = "0.5.1", features = ["json"] }
 rocket_db_pools = { version = "0.2.0", features = ["sqlx_postgres"] }
-serde = "1.0.204"
-serde_json = "1.0.120"
-sqlx = { version = "0.7.0", features = [
+serde = "1.0.219"
+serde_json = "1.0.140"
+sqlx = { version = "0.7.4", features = [
     "runtime-tokio-rustls",
     "postgres",
     "chrono",
@@ -25,13 +25,13 @@ sqlx = { version = "0.7.0", features = [
     "macros",
     "json",
 ] }
-chrono = { version = "0.4.38", features = ["serde"] }
-reqwest = { version = "0.12.5", features = ["json", "stream"] }
-tracing = "0.1.40"
-tracing-subscriber = { version = "0.3.18", features = [
+chrono = { version = "0.4.41", features = ["serde"] }
+reqwest = { version = "0.12.20", features = ["json"] }
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.19", features = [
     "env-filter",
     "tracing-log",
 ] }
-tracing-logfmt = "0.3.4"
-anda-config = "0.2.3"
+tracing-logfmt = "0.3.5"
+anda-config = "0.4.13"
 webhook = "2.1.2"
