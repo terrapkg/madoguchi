@@ -24,7 +24,7 @@ use tracing::error;
 
 const MAX_LIM: i64 = 100;
 
-pub(crate) fn routes() -> Vec<Route> {
+pub fn routes() -> Vec<Route> {
 	routes![add_pkg, del_pkg, add_repo, del_repo, list_repos, search_pkgs, pkg_info, list_builds]
 }
 
@@ -52,11 +52,11 @@ async fn add_pkg(
 	);
 	match q.execute(&mut **db).await {
 		Ok(res) => {
-			if res.rows_affected() != 1 {
+			if res.rows_affected() == 1 {
+				Status::Created
+			} else {
 				tracing::error!("Affected more than 1 rows?");
 				Status::InternalServerError
-			} else {
-				Status::Created
 			}
 		},
 		Err(e) => {
@@ -112,10 +112,10 @@ async fn add_repo(
 	let q = q!("INSERT INTO repos(name, link, gh) VALUES ($1,$2,$3)", name, link, gh);
 	match q.execute(&mut **db).await {
 		Ok(res) => {
-			if res.rows_affected() != 1 {
-				Status::InternalServerError
-			} else {
+			if res.rows_affected() == 1 {
 				Status::Created
+			} else {
+				Status::InternalServerError
 			}
 		},
 		Err(e) => {
@@ -176,15 +176,15 @@ async fn search_pkgs(
 	}
 	// highly electronegative atoms :3
 	let n = n.unwrap_or(MAX_LIM);
-	let o = order.unwrap_or("name DESC".into());
+	let o = order.unwrap_or_else(|| "name DESC".into());
 	let f = offset.unwrap_or(0);
 	let res =
 		qa!(Pkg, "SELECT * FROM pkgs WHERE repo=$1 ORDER BY $2 LIMIT $3 OFFSET $4", repo, o, n, f)
 			.fetch(&mut **db)
-			.map(|x| x.ok())
+			.map(std::result::Result::ok)
 			.collect::<Vec<Option<Pkg>>>()
 			.await;
-	if res.iter().any(|x| x.is_none()) {
+	if res.iter().any(Option::is_none) {
 		Err(Status::NotFound)
 	} else {
 		Ok(serde_json::json!(res))
@@ -195,14 +195,8 @@ async fn search_pkgs(
 async fn pkg_info(
 	mut db: Connection<Mg>, repo: String, name: String,
 ) -> Result<rocket::serde::json::Value, Status> {
-	let res = qa!(Pkg, "SELECT * FROM pkgs WHERE repo=$1 AND name=$2", repo, name)
-		.fetch_one(&mut **db)
-		.await;
-	if let Ok(res) = res {
-		Ok(serde_json::json!(res))
-	} else {
-		Err(Status::NotFound)
-	}
+	let res = qa!(Pkg, "SELECT * FROM pkgs WHERE repo=$1 AND name=$2", repo, name);
+	res.fetch_one(&mut **db).await.map_or(Err(Status::NotFound), |res| Ok(serde_json::json!(res)))
 }
 
 #[get("/<repo>/builds/<pkg>")]
@@ -210,9 +204,6 @@ async fn list_builds(
 	mut db: Connection<Mg>, repo: String, pkg: String,
 ) -> Result<rocket::serde::json::Value, Status> {
 	let res = qa!(Build, "SELECT * FROM builds WHERE repo=$1 AND pname=$2", repo, pkg);
-	if let Ok(builds) = res.fetch_all(&mut **db).await {
-		Ok(serde_json::json!(builds))
-	} else {
-		Err(Status::NotFound)
-	}
+	(res.fetch_all(&mut **db).await)
+		.map_or(Err(Status::NotFound), |builds| Ok(serde_json::json!(builds)))
 }

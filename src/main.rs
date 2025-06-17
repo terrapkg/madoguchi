@@ -13,21 +13,20 @@
 // You should have received a copy of the GNU General Public License along with Madoguchi.
 // If not, see <https://www.gnu.org/licenses/>.
 //
-#[allow(unused_imports)]
 mod api;
 mod db;
-use rocket::*;
+use rocket::{fairing, get, launch, response, routes, Build, Rocket};
 use rocket_db_pools::Database;
 use tracing::{error, info};
 use tracing_subscriber::{prelude::*, EnvFilter, Registry};
 
 #[get("/")]
-async fn index() -> response::Redirect {
+fn index() -> response::Redirect {
 	response::Redirect::to("https://terra.fyralabs.com/")
 }
 
 #[get("/health")]
-async fn health() -> &'static str {
+const fn health() -> &'static str {
 	env!("CARGO_PKG_VERSION")
 }
 
@@ -39,7 +38,7 @@ fn chks() {
 async fn migrate(rocket: Rocket<Build>) -> fairing::Result {
 	match db::Madoguchi::fetch(&rocket) {
 		Some(db) => match rocket_db_pools::sqlx::migrate!().run(&**db).await {
-			Ok(_) => Ok(rocket),
+			Ok(()) => Ok(rocket),
 			Err(e) => {
 				error!("Fail to init db: {e}");
 				Err(rocket)
@@ -50,10 +49,10 @@ async fn migrate(rocket: Rocket<Build>) -> fairing::Result {
 }
 
 #[launch]
-async fn rocket() -> _ {
+fn rocket() -> _ {
 	if let Err(e) = dotenv::dotenv() {
 		tracing::warn!("Ignoring .env: {e}");
-	};
+	}
 	Registry::default().with(EnvFilter::from_default_env()).with(tracing_logfmt::layer()).init();
 	chks();
 	info!("Launching rocket 🚀");

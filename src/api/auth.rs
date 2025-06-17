@@ -34,8 +34,8 @@ pub enum ApiError {
 impl std::fmt::Display for ApiError {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
-			ApiError::Nil => write!(f, "Fail to verify token"),
-			ApiError::NoAdminScope => write!(f, "Token has no admin scope as required"),
+			Self::Nil => write!(f, "Fail to verify token"),
+			Self::NoAdminScope => write!(f, "Token has no admin scope as required"),
 		}
 	}
 }
@@ -47,8 +47,8 @@ impl<'r> FromRequest<'r> for ApiAuth {
 		for token in req.headers().get("Authorization").filter_map(|a| a.strip_prefix("Bearer ")) {
 			let options = VerificationOptions::default();
 			if let Ok(claims) = JWT_KEY.verify_token::<CustomClaims>(token, Some(options)) {
-				return if claims.custom.scopes.contains(&"admin".to_string()) {
-					request::Outcome::Success(ApiAuth { token: token.to_string() })
+				return if claims.custom.scopes.contains(&"admin".to_owned()) {
+					request::Outcome::Success(Self { token: token.to_owned() })
 				} else {
 					request::Outcome::Error((Status::Forbidden, ApiError::NoAdminScope))
 				};

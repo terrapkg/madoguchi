@@ -16,7 +16,7 @@ use rocket::response::Redirect;
 use rocket::{get, routes, Route};
 use rocket_db_pools::Connection;
 
-pub(crate) fn routes() -> Vec<Route> {
+pub fn routes() -> Vec<Route> {
 	routes![redirect_pkg, redirect_andahcl, redirect_andaspec, redirect_andaspecraw]
 }
 

@@ -25,7 +25,7 @@ static WEBHOOKER: LazyLock<webhook::client::WebhookClient> = LazyLock::new(|| {
 	webhook::client::WebhookClient::new(&std::env::var("DISCORD_WEBHOOK").unwrap())
 });
 
-pub(crate) fn routes() -> Vec<Route> {
+pub fn routes() -> Vec<Route> {
 	routes![add_build]
 }
 
@@ -130,9 +130,9 @@ async fn add_failed_build(mut db: Connection<Mg>, r: String, b: Json<AddBuildBod
 	let (arch, dir, bid) = (&b.arch, &b.dirs, &b.id);
 
 	send_webhook(format!(
-		r#"
+		"
 <:incorrect:1176633989864362094> Build Failing on **{r}**: **{dir}** (*{arch}*)
-⇒ [gha](https://github.com/terrapkg/packages/actions/runs/{bid}/)"#,
+⇒ [gha](https://github.com/terrapkg/packages/actions/runs/{bid}/)",
 	))
 	.await;
 
@@ -145,5 +145,5 @@ async fn send_webhook(s: String) {
 			.avatar_url("https://avatars.githubusercontent.com/u/114906088")
 			.content(&s)
 	});
-	let _ = msg.await;
+	_ = msg.await;
 }
