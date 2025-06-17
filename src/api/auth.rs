@@ -4,10 +4,11 @@ use rocket::{
 	http::Status,
 	request::{self, FromRequest},
 };
+use std::sync::LazyLock;
 
-lazy_static::lazy_static! {
-	pub static ref JWT_KEY: HS256Key = HS256Key::from_bytes(&STANDARD_NO_PAD.decode(std::env::var("JWT_KEY").unwrap()).unwrap());
-}
+pub static JWT_KEY: LazyLock<HS256Key> = LazyLock::new(|| {
+	HS256Key::from_bytes(&STANDARD_NO_PAD.decode(std::env::var("JWT_KEY").unwrap()).unwrap())
+});
 
 pub struct ApiAuth {
 	pub token: String,

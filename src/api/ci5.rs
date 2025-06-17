@@ -19,10 +19,11 @@ use rocket::{put, routes, Route};
 use rocket_db_pools::Connection;
 use serde::Deserialize;
 use sqlx::types::chrono;
+use std::sync::LazyLock;
 
-lazy_static::lazy_static! {
-	static ref WEBHOOKER: webhook::client::WebhookClient = webhook::client::WebhookClient::new(&std::env::var("DISCORD_WEBHOOK").unwrap());
-}
+static WEBHOOKER: LazyLock<webhook::client::WebhookClient> = LazyLock::new(|| {
+	webhook::client::WebhookClient::new(&std::env::var("DISCORD_WEBHOOK").unwrap())
+});
 
 pub(crate) fn routes() -> Vec<Route> {
 	routes![add_build]
