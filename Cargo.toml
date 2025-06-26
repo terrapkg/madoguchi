@@ -32,8 +32,8 @@ features = [
     "json",
 ]
 
-[patch.crates-io.sqlx]
-version = "0.8.1"
+[patch.crates-io]
+sqlx = { git = "https://github.com/launchbadge/sqlx", tag = "v0.8.1" }
 
 [dependencies.tracing-subscriber]
 version = "0.3.19"
