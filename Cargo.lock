@@ -1608,7 +1608,7 @@ dependencies = [
 
 [[package]]
 name = "madoguchi"
-version = "0.5.3"
+version = "0.5.4"
 dependencies = [
  "anda-config",
  "base64 0.22.1",
