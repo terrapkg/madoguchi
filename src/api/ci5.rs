@@ -76,13 +76,12 @@ async fn add_build(
 	} else if build_body.succ {
 		// don't want to update if it doesn't even build
 		if let Err(err) = sqlx::query!(
-			"UPDATE pkgs SET ver=$1,rel=$2,dirs=$3 WHERE name=$4 AND repo=$5 AND arch=$6",
+			"UPDATE pkgs SET ver=$1,rel=$2,dirs=$3 WHERE name=$4 AND repo=$5",
 			build_body.ver,
 			build_body.rel,
 			build_body.dirs.trim_matches('/'),
 			name,
 			repo,
-			build_body.arch,
 		)
 		.execute(&mut **db)
 		.await
