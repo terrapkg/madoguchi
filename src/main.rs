@@ -50,6 +50,16 @@ async fn migrate(rocket: Rocket<Build>) -> fairing::Result {
 
 #[launch]
 fn rocket() -> _ {
+	let _guard = sentry::init((
+		"https://d39dd8eeb873a16483dbc9976d84257a@o271654.ingest.us.sentry.io/4510524119973888",
+		sentry::ClientOptions {
+			release: sentry::release_name!(),
+			// Capture user IPs and potentially sensitive headers when using HTTP server integrations
+			// see https://docs.sentry.io/platforms/rust/data-management/data-collected for more info
+			send_default_pii: true,
+			..Default::default()
+		},
+	));
 	if let Err(e) = dotenv::dotenv() {
 		tracing::warn!("Ignoring .env: {e}");
 	}
